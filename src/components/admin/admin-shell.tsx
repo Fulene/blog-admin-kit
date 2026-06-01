@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   ChevronDown,
@@ -59,6 +59,7 @@ export function AdminShell({
     useState<AdminSectionId>("articles");
   const [themeMode, setThemeMode] = useState<ThemeMode>("dark");
   const [profile, setProfile] = useState<ProfileView | null>(initialProfile);
+  const [hasHeaderAvatarError, setHasHeaderAvatarError] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [areSidebarLabelsVisible, setAreSidebarLabelsVisible] = useState(true);
@@ -68,12 +69,20 @@ export function AdminShell({
   const isProfileActive = profileSectionIds.includes(activeSectionId);
   const userLabel =
     profile?.first_name?.trim() || userEmail.split("@")[0] || "Admin";
+  const headerInitials = getUserInitials(
+    [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
+      userEmail,
+  );
 
   useEffect(() => {
     if (isProfileActive) {
       setIsProfileMenuOpen(true);
     }
   }, [isProfileActive]);
+
+  useEffect(() => {
+    setHasHeaderAvatarError(false);
+  }, [profile?.avatarDisplayUrl]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -242,7 +251,7 @@ export function AdminShell({
             </button>
           </div>
 
-          <div className="hidden min-w-0 text-right md:block">
+          <div className="absolute left-1/2 hidden min-w-0 -translate-x-1/2 text-center md:block">
             <p className="truncate text-xl font-normal text-stone-800 dark:text-stone-100">
               Hello{" "}
               <span className="font-bold text-[#f44336] dark:text-[#ff8a3d]">
@@ -252,6 +261,33 @@ export function AdminShell({
             <p className="mt-1 truncate text-xs text-stone-500 dark:text-stone-300">
               {userEmail}
             </p>
+          </div>
+
+          <div className="hidden md:block">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSectionId("profile-edit");
+                setIsProfileMenuOpen(true);
+              }}
+              className="h-10 w-10 cursor-pointer overflow-hidden rounded-full border border-stone-200 bg-stone-100 transition-transform duration-200 hover:scale-105 dark:border-[#2d2e30] dark:bg-[#111213]"
+              aria-label="Modifier mon profil"
+              title="Modifier mon profil"
+            >
+              {profile?.avatarDisplayUrl && !hasHeaderAvatarError ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={profile.avatarDisplayUrl}
+                  alt={userLabel}
+                  className="h-full w-full object-cover"
+                  onError={() => setHasHeaderAvatarError(true)}
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-sm font-bold text-stone-500 dark:text-stone-300">
+                  {headerInitials}
+                </div>
+              )}
+            </button>
           </div>
 
           <div className="flex items-center gap-3 md:hidden">
@@ -406,6 +442,14 @@ export function AdminShell({
       </div>
     </main>
   );
+}
+
+function getUserInitials(value: string) {
+  const parts = value.split(/[ @._-]/).filter(Boolean);
+  const firstInitial = parts[0]?.[0] ?? "A";
+  const secondInitial = parts[1]?.[0] ?? "";
+
+  return `${firstInitial}${secondInitial}`.toUpperCase();
 }
 
 function SidebarButton({
