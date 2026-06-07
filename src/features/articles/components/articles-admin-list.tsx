@@ -9,20 +9,30 @@ import {
   ChevronUp,
   Eye,
   Pencil,
+  Plus,
   Search,
   Trash2,
 } from "lucide-react";
+import {
+  ToastMessage,
+  type ToastMessageState,
+} from "@/components/feedback/toast-message";
+import { SelectDropdown } from "@/components/forms/select-dropdown";
+import { ArticleCreateDrawer } from "@/features/articles/components/article-create-drawer";
 import { getArticles } from "@/features/articles/services/articles.service";
 import type {
   Article,
   ArticleStatus,
   ArticleStatusFilter,
 } from "@/features/articles/types/article";
+import { getCategories } from "@/features/categories/services/categories.service";
+import type { Category } from "@/features/categories/types/category";
+import { useActiveSite } from "@/features/sites/components/active-site-provider";
 
 type LoadState = "idle" | "loading" | "success" | "error";
 type SortColumn =
   | "title"
-  | "category_name"
+  | "category"
   | "status"
   | "published_at"
   | "updated_at"
@@ -47,19 +57,25 @@ const statusFilters: Array<{
 
 const statusLabels: Record<ArticleStatus, string> = {
   draft: "Brouillon",
-  published: "Publie",
+  published: "Publié",
 };
 
 export function ArticlesAdminList() {
+  const { activeSiteId } = useActiveSite();
   const [articles, setArticles] = useState<Article[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("idle");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ArticleStatusFilter>("all");
   const [sortState, setSortState] = useState<SortState>({
     column: "updated_at",
     direction: "desc",
   });
+  const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<ToastMessageState | null>(
+    null,
+  );
+  const [reloadKey, setReloadKey] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(10);
 
@@ -68,27 +84,32 @@ export function ArticlesAdminList() {
 
     async function loadArticles() {
       setLoadState("loading");
-      setErrorMessage(null);
 
       try {
-        const data = await getArticles();
+        const [articleData, categoryData] = await Promise.all([
+          getArticles(activeSiteId),
+          getCategories(activeSiteId),
+        ]);
 
         if (!isMounted) {
           return;
         }
 
-        setArticles(data);
+        setArticles(articleData);
+        setCategories(categoryData);
         setLoadState("success");
       } catch (error) {
         if (!isMounted) {
           return;
         }
 
-        setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : "Impossible de charger les articles.",
-        );
+        setToastMessage({
+          status: "error",
+          text:
+            error instanceof Error
+              ? error.message
+              : "Impossible de charger les articles.",
+        });
         setLoadState("error");
       }
     }
@@ -98,7 +119,15 @@ export function ArticlesAdminList() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [activeSiteId, reloadKey]);
+
+  const categoryNameById = useMemo(
+    () =>
+      new Map(
+        categories.map((category) => [category.id, category.name] as const),
+      ),
+    [categories],
+  );
 
   const filteredArticles = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -112,7 +141,7 @@ export function ArticlesAdminList() {
           article.title,
           article.slug,
           article.summary,
-          article.category_name,
+          article.category_id ? categoryNameById.get(article.category_id) : null,
         ]
           .filter(Boolean)
           .join(" ")
@@ -126,15 +155,21 @@ export function ArticlesAdminList() {
       })
       .toSorted((firstArticle, secondArticle) =>
         sortState
-          ? compareArticles(firstArticle, secondArticle, sortState)
+          ? compareArticles(
+              firstArticle,
+              secondArticle,
+              sortState,
+              categoryNameById,
+            )
           : 0,
       );
-  }, [articles, searchQuery, sortState, statusFilter]);
+  }, [articles, categoryNameById, searchQuery, sortState, statusFilter]);
 
   const totalPages = Math.max(
     1,
     Math.ceil(filteredArticles.length / itemsPerPage),
   );
+  const shouldShowPaginationControls = filteredArticles.length >= 6;
 
   const paginatedArticles = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -144,7 +179,7 @@ export function ArticlesAdminList() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [itemsPerPage, searchQuery, sortState, statusFilter]);
+  }, [activeSiteId, itemsPerPage, searchQuery, sortState, statusFilter]);
 
   useEffect(() => {
     setCurrentPage((page) => Math.min(page, totalPages));
@@ -172,41 +207,52 @@ export function ArticlesAdminList() {
 
   return (
     <section className="flex min-h-full flex-col gap-5">
+      <ToastMessage
+        message={toastMessage}
+        onClose={() => setToastMessage(null)}
+      />
+
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div className="relative w-full lg:max-w-sm">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400"
-            aria-hidden="true"
-          />
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Rechercher un article"
-            className="h-11 w-full rounded-md border border-stone-200 bg-white pl-10 pr-3 text-sm text-stone-950 outline-none transition-colors placeholder:text-stone-400 focus:border-stone-400 dark:border-[#2d2e30] dark:bg-[#141517] dark:text-white dark:placeholder:text-stone-500 dark:focus:border-[#ff8a3d]"
-          />
+        <div className="flex w-full flex-col gap-3 sm:flex-row lg:max-w-sm">
+          <div className="relative min-w-0 flex-1">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Rechercher un article"
+              className="h-11 w-full rounded-md border border-stone-200 bg-white pl-10 pr-3 text-sm text-stone-950 outline-none transition-colors placeholder:text-stone-400 focus:border-stone-400 dark:border-[#2d2e30] dark:bg-[#141517] dark:text-white dark:placeholder:text-stone-500 dark:focus:border-[#ff8a3d]"
+            />
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 lg:justify-center">
-          <PaginationControls
-            currentPage={currentPage}
-            itemsPerPage={itemsPerPage}
-            totalItems={filteredArticles.length}
-            totalPages={totalPages}
-            onItemsPerPageChange={setItemsPerPage}
-            onPageChange={setCurrentPage}
-          />
-          <ItemsPerPageControl
-            itemsPerPage={itemsPerPage}
-            onItemsPerPageChange={setItemsPerPage}
-          />
+          {shouldShowPaginationControls ? (
+            <>
+              <PaginationControls
+                currentPage={currentPage}
+                itemsPerPage={itemsPerPage}
+                totalItems={filteredArticles.length}
+                totalPages={totalPages}
+                onItemsPerPageChange={setItemsPerPage}
+                onPageChange={setCurrentPage}
+              />
+              <ItemsPerPageControl
+                itemsPerPage={itemsPerPage}
+                onItemsPerPageChange={setItemsPerPage}
+              />
+            </>
+          ) : null}
           <span className="text-xs font-medium text-stone-500 dark:text-stone-500">
             {filteredArticles.length} article
             {filteredArticles.length > 1 ? "s" : ""} au total
           </span>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2 xl:w-[430px] xl:justify-end">
           {statusFilters.map((filter) => {
             const isActive = statusFilter === filter.value;
 
@@ -226,6 +272,19 @@ export function ArticlesAdminList() {
               </button>
             );
           })}
+          <button
+            type="button"
+            onClick={() => setIsCreateDrawerOpen(true)}
+            className="group inline-flex h-11 w-11 shrink-0 cursor-pointer items-center overflow-hidden rounded-full bg-[#f44336] text-sm font-semibold text-white transition-[width,background-color] duration-200 ease-out hover:w-39 hover:bg-[#d7382d] focus-visible:w-39 focus-visible:bg-[#d7382d] dark:bg-[#ff8a3d] dark:text-stone-950 dark:hover:bg-[#ff7920] dark:focus-visible:bg-[#ff7920]"
+            aria-label="Nouvel article"
+          >
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center">
+              <Plus className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <span className="-ml-1 w-0 overflow-hidden whitespace-nowrap opacity-0 transition-[width,opacity] duration-200 ease-out group-hover:w-25 group-hover:opacity-100 group-focus-visible:w-25 group-focus-visible:opacity-100">
+              Nouvel article
+            </span>
+          </button>
         </div>
       </div>
 
@@ -235,7 +294,7 @@ export function ArticlesAdminList() {
         ) : null}
 
         {loadState === "error" ? (
-          <ArticlesErrorState message={errorMessage} />
+          <ArticlesErrorState />
         ) : null}
 
         {loadState === "success" && articles.length === 0 ? (
@@ -251,13 +310,16 @@ export function ArticlesAdminList() {
         {loadState === "success" && filteredArticles.length > 0 ? (
           <ArticlesTable
             articles={paginatedArticles}
+            categoryNameById={categoryNameById}
             sortState={sortState}
             onSort={handleSort}
           />
         ) : null}
       </div>
 
-      {loadState === "success" && filteredArticles.length > 0 ? (
+      {loadState === "success" &&
+      filteredArticles.length > 0 &&
+      shouldShowPaginationControls ? (
         <>
           <PaginationControls
             currentPage={currentPage}
@@ -270,6 +332,15 @@ export function ArticlesAdminList() {
           />
         </>
       ) : null}
+
+      <ArticleCreateDrawer
+        isOpen={isCreateDrawerOpen}
+        onArticleCreated={(message) => {
+          setReloadKey((key) => key + 1);
+          setToastMessage(message);
+        }}
+        onClose={() => setIsCreateDrawerOpen(false)}
+      />
     </section>
   );
 }
@@ -333,60 +404,28 @@ function ItemsPerPageControl({
   itemsPerPage: number;
   onItemsPerPageChange: (itemsPerPage: number) => void;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
-
   return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setIsOpen((value) => !value)}
-        onBlur={() => window.setTimeout(() => setIsOpen(false), 120)}
-        className="flex h-10 cursor-pointer items-center gap-2 rounded-md border border-stone-200 bg-white px-3 text-sm text-stone-600 transition-colors hover:bg-stone-50 dark:border-[#2d2e30] dark:bg-[#141517] dark:text-stone-300 dark:hover:bg-[#18191b]"
-      >
-        <span className="whitespace-nowrap">Par page</span>
-        <span className="font-semibold text-stone-950 dark:text-white">
-          {itemsPerPage}
-        </span>
-        <ChevronDown className="h-4 w-4 text-stone-700 dark:text-stone-300" />
-      </button>
-
-      {isOpen ? (
-        <div className="absolute left-0 top-11 z-20 min-w-full overflow-hidden rounded-md border border-stone-200 bg-white shadow-lg dark:border-[#2d2e30] dark:bg-[#141517]">
-          {ITEMS_PER_PAGE_OPTIONS.map((option) => {
-            const isActive = option === itemsPerPage;
-
-            return (
-              <button
-                key={option}
-                type="button"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => {
-                  onItemsPerPageChange(option);
-                  setIsOpen(false);
-                }}
-                className={[
-                  "flex h-9 w-full cursor-pointer items-center px-3 text-left text-sm transition-colors",
-                  isActive
-                    ? "bg-red-50 font-semibold text-stone-950 dark:bg-[#24262a] dark:text-white"
-                    : "text-stone-600 hover:bg-stone-100 hover:text-stone-950 dark:text-stone-300 dark:hover:bg-[#18191b] dark:hover:text-white",
-                ].join(" ")}
-              >
-                {option}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-    </div>
+    <SelectDropdown
+      ariaLabel="Nombre d'articles par page"
+      className="w-[132px]"
+      options={ITEMS_PER_PAGE_OPTIONS.map((option) => ({
+        id: String(option),
+        label: `${option} / page`,
+      }))}
+      value={String(itemsPerPage)}
+      onChange={(value) => onItemsPerPageChange(Number(value))}
+    />
   );
 }
 
 function ArticlesTable({
   articles,
+  categoryNameById,
   sortState,
   onSort,
 }: {
   articles: Article[];
+  categoryNameById: Map<string, string>;
   sortState: SortState;
   onSort: (column: SortColumn) => void;
 }) {
@@ -403,7 +442,7 @@ function ArticlesTable({
               onSort={onSort}
             />
             <SortableTableHeader
-              column="category_name"
+              column="category"
               label="Categorie"
               className="w-[13%]"
               sortState={sortState}
@@ -455,7 +494,13 @@ function ArticlesTable({
                 </div>
               </td>
               <td className="px-4 py-4">
-                <EmptyValueFallback value={article.category_name} />
+                <EmptyValueFallback
+                  value={
+                    article.category_id
+                      ? categoryNameById.get(article.category_id) ?? null
+                      : null
+                  }
+                />
               </td>
               <td className="px-4 py-4">
                 <ArticleStatusBadge status={article.status} />
@@ -586,7 +631,7 @@ function ArticlesLoadingState() {
   );
 }
 
-function ArticlesErrorState({ message }: { message: string | null }) {
+function ArticlesErrorState() {
   return (
     <div className="flex w-full items-center justify-center p-8 text-center">
       <div>
@@ -594,7 +639,7 @@ function ArticlesErrorState({ message }: { message: string | null }) {
           Impossible de charger les articles
         </p>
         <p className="mt-2 max-w-md text-sm text-stone-500 dark:text-stone-400">
-          {message ?? "Une erreur inconnue est survenue."}
+          Le detail de l'erreur est affiche dans le toast.
         </p>
       </div>
     </div>
@@ -618,7 +663,7 @@ function ArticlesEmptyState({ title }: { title: string }) {
 
 function formatDate(value: string | null) {
   if (!value) {
-    return "Non publie";
+    return "Non publié";
   }
 
   const date = new Date(value);
@@ -640,10 +685,19 @@ function compareArticles(
   firstArticle: Article,
   secondArticle: Article,
   sortState: ActiveSortState,
+  categoryNameById: Map<string, string>,
 ) {
   const directionMultiplier = sortState.direction === "asc" ? 1 : -1;
-  const firstValue = getSortableValue(firstArticle, sortState.column);
-  const secondValue = getSortableValue(secondArticle, sortState.column);
+  const firstValue = getSortableValue(
+    firstArticle,
+    sortState.column,
+    categoryNameById,
+  );
+  const secondValue = getSortableValue(
+    secondArticle,
+    sortState.column,
+    categoryNameById,
+  );
 
   if (firstValue < secondValue) {
     return -1 * directionMultiplier;
@@ -656,7 +710,11 @@ function compareArticles(
   return 0;
 }
 
-function getSortableValue(article: Article, column: SortColumn) {
+function getSortableValue(
+  article: Article,
+  column: SortColumn,
+  categoryNameById: Map<string, string>,
+) {
   if (column === "published_at" || column === "updated_at") {
     const value = article[column];
 
@@ -665,6 +723,12 @@ function getSortableValue(article: Article, column: SortColumn) {
 
   if (column === "updated_by") {
     return formatUserId(article.updated_by).toLowerCase();
+  }
+
+  if (column === "category") {
+    return article.category_id
+      ? (categoryNameById.get(article.category_id) ?? "").toLowerCase()
+      : "";
   }
 
   return String(article[column] ?? "").toLowerCase();

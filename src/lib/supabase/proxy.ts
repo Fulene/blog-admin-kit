@@ -39,9 +39,11 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const hasUser = Boolean(data?.claims);
   const isAdminPath = request.nextUrl.pathname.startsWith("/admin");
+  const isSiteSelectionPath =
+    request.nextUrl.pathname.startsWith("/select-site");
   const isLoginPath = request.nextUrl.pathname.startsWith("/login");
 
-  if (!hasUser && isAdminPath) {
+  if (!hasUser && (isAdminPath || isSiteSelectionPath)) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     redirectUrl.searchParams.set("redirectedFrom", request.nextUrl.pathname);

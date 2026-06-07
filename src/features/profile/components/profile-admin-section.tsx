@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   AlertCircle,
   Camera,
-  CheckCircle2,
   Info,
   KeyRound,
   Loader2,
@@ -13,6 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type InputHTMLAttributes } from "react";
 import { useForm } from "react-hook-form";
+import { ToastMessage } from "@/components/feedback/toast-message";
 import {
   changePasswordSchema,
   updateProfileSchema,
@@ -38,9 +38,6 @@ const emptyMessage: ActionMessage = {
   text: null,
 };
 
-const TOAST_DISPLAY_DURATION_IN_MS = 5000;
-const TOAST_EXIT_DURATION_IN_MS = 220;
-
 export function ProfileAdminSection({
   mode,
   userId,
@@ -62,9 +59,6 @@ export function ProfileAdminSection({
     useState<ActionMessage>(emptyMessage);
   const [passwordMessage, setPasswordMessage] =
     useState<ActionMessage>(emptyMessage);
-  const [visibleToastMessage, setVisibleToastMessage] =
-    useState<ActionMessage>(emptyMessage);
-  const [isToastLeaving, setIsToastLeaving] = useState(false);
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
   const [pendingAvatarPreviewUrl, setPendingAvatarPreviewUrl] = useState<
     string | null
@@ -146,31 +140,13 @@ export function ProfileAdminSection({
       : avatarMessage.text !== null
         ? avatarMessage
         : passwordMessage;
-
-  useEffect(() => {
-    if (!toastMessage.text) {
-      return;
-    }
-
-    setVisibleToastMessage(toastMessage);
-    setIsToastLeaving(false);
-
-    const exitTimer = window.setTimeout(() => {
-      setIsToastLeaving(true);
-    }, TOAST_DISPLAY_DURATION_IN_MS);
-    const clearTimer = window.setTimeout(() => {
-      setVisibleToastMessage(emptyMessage);
-      setProfileMessage(emptyMessage);
-      setAvatarMessage(emptyMessage);
-      setPasswordMessage(emptyMessage);
-      setIsToastLeaving(false);
-    }, TOAST_DISPLAY_DURATION_IN_MS + TOAST_EXIT_DURATION_IN_MS);
-
-    return () => {
-      window.clearTimeout(exitTimer);
-      window.clearTimeout(clearTimer);
-    };
-  }, [toastMessage]);
+  const visibleToastMessage =
+    toastMessage.text && toastMessage.status !== "idle"
+      ? {
+          status: toastMessage.status,
+          text: toastMessage.text,
+        }
+      : null;
 
   async function saveProfile(values: UpdateProfileValues) {
     setIsSavingProfile(true);
@@ -288,17 +264,24 @@ export function ProfileAdminSection({
 
   return (
     <section className="profile-section-in min-h-full pt-6">
-      <ToastMessageView
-        isLeaving={isToastLeaving}
+      <ToastMessage
         message={visibleToastMessage}
+        onClose={() => {
+          setProfileMessage(emptyMessage);
+          setAvatarMessage(emptyMessage);
+          setPasswordMessage(emptyMessage);
+        }}
       />
 
       <div
         key={mode}
-        className="profile-title-in mb-[70px] w-[300px] border-b border-stone-200 bg-white px-0 pb-3 dark:border-[#2d2e30] dark:bg-transparent"
+        className="profile-title-in mb-[70px] w-[300px] bg-white px-0 pb-3 dark:bg-transparent"
       >
-        <h2 className="text-lg font-bold text-stone-950 dark:text-white">
-          {mode === "edit" ? "Modifier mon profil" : "Securite"}
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#f44336] dark:text-[#ff8a3d]">
+          Profil
+        </p>
+        <h2 className="mt-1 text-lg font-bold text-stone-950 dark:text-white">
+          {mode === "edit" ? "Modifier mon profil" : "Sécurité"}
         </h2>
       </div>
 
@@ -523,42 +506,5 @@ function PasswordField({
         </span>
       ) : null}
     </label>
-  );
-}
-
-function ToastMessageView({
-  isLeaving,
-  message,
-}: {
-  isLeaving: boolean;
-  message: ActionMessage;
-}) {
-  if (!message.text || message.status === "idle") {
-    return null;
-  }
-
-  const isSuccess = message.status === "success";
-  const Icon = isSuccess ? CheckCircle2 : AlertCircle;
-
-  return (
-    <div
-      className={[
-        "fixed bottom-5 left-1/2 z-20 w-[calc(100dvw-2rem)] max-w-sm md:absolute md:bottom-auto md:left-auto md:right-1 md:top-6 md:w-auto",
-        isLeaving ? "profile-toast-out" : "profile-toast-in",
-      ].join(" ")}
-    >
-      <div
-        className={[
-          "flex items-center gap-2 rounded-md border px-4 py-3 text-sm font-medium shadow-lg dark:shadow-white/5",
-          isLeaving ? "" : "profile-toast-float",
-          isSuccess
-            ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-500/10 dark:text-emerald-300"
-            : "border-red-200 bg-red-50 text-[#b42318] dark:border-[#5f2a20] dark:bg-[#241412] dark:text-[#ffb199]",
-        ].join(" ")}
-      >
-        <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-        <span>{message.text}</span>
-      </div>
-    </div>
   );
 }

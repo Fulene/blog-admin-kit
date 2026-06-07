@@ -6,19 +6,20 @@ export type ArticleStatusFilter = "all" | ArticleStatus;
 
 export type Article = {
   id: string;
+  site_id: string;
+  author_id: string;
+  category_id: string | null;
   title: string;
   slug: string;
   summary: string;
   content: string;
   cover_image_url: string | null;
   cover_image_alt: string | null;
-  seo_title: string | null;
-  seo_description: string | null;
-  category_name: string | null;
+  meta_title: string | null;
+  meta_description: string | null;
   status: ArticleStatus;
   published_at: string | null;
-  created_by: string | null;
-  created_at: string;
   updated_by: string | null;
+  created_at: string;
   updated_at: string;
 };

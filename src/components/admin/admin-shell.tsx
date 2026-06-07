@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import {
   ChevronDown,
   FileText,
+  FolderTree,
   LogOut,
   Menu,
   Moon,
@@ -13,16 +15,31 @@ import {
   Settings,
   ShieldCheck,
   Sun,
+  Tags,
   UserRound,
+  Users,
   X,
 } from "lucide-react";
+import { SelectDropdown } from "@/components/forms/select-dropdown";
 import { logoutAction } from "@/features/auth/actions/auth.actions";
 import { ArticlesAdminList } from "@/features/articles/components/articles-admin-list";
+import { MembersAdminSection } from "@/features/members/components/members-admin-section";
 import { ProfileAdminSection } from "@/features/profile/components/profile-admin-section";
 import type { ProfileView } from "@/features/profile/types/profile";
+import { ActiveSiteProvider } from "@/features/sites/components/active-site-provider";
+import type { Site } from "@/features/sites/types/site";
+import { TaxonomyAdminSection } from "@/features/taxonomy/components/taxonomy-admin-section";
 
-type AdminSectionId = "articles" | "profile-edit" | "profile-security";
+type AdminSectionId =
+  | "articles"
+  | "categories"
+  | "tags"
+  | "members"
+  | "profile-edit"
+  | "profile-security";
 type ThemeMode = "light" | "dark";
+
+const ACTIVE_SITE_STORAGE_PREFIX = "blog-admin-kit-active-site";
 
 const profileSectionIds: AdminSectionId[] = [
   "profile-edit",
@@ -48,17 +65,22 @@ const profileSubsections = [
 
 export function AdminShell({
   initialProfile,
+  initialSites,
   userEmail,
   userId,
 }: {
   initialProfile: ProfileView | null;
+  initialSites: Site[];
   userEmail: string;
   userId: string;
 }) {
+  const router = useRouter();
   const [activeSectionId, setActiveSectionId] =
     useState<AdminSectionId>("articles");
   const [themeMode, setThemeMode] = useState<ThemeMode>("dark");
   const [profile, setProfile] = useState<ProfileView | null>(initialProfile);
+  const [activeSite, setActiveSite] = useState<Site | null>(null);
+  const [isSiteReady, setIsSiteReady] = useState(false);
   const [hasHeaderAvatarError, setHasHeaderAvatarError] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -73,6 +95,7 @@ export function AdminShell({
     [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
       userEmail,
   );
+  const activeSiteStorageKey = getActiveSiteStorageKey(userId);
 
   useEffect(() => {
     if (isProfileActive) {
@@ -98,6 +121,46 @@ export function AdminShell({
     document.documentElement.classList.toggle("dark", themeMode === "dark");
     window.localStorage.setItem("blog-admin-kit-theme", themeMode);
   }, [themeMode]);
+
+  useEffect(() => {
+    if (initialSites.length === 0) {
+      setActiveSite(null);
+      setIsSiteReady(true);
+      return;
+    }
+
+    if (initialSites.length === 1) {
+      const [site] = initialSites;
+      setActiveSite(site);
+      window.localStorage.setItem(activeSiteStorageKey, site.id);
+      setIsSiteReady(true);
+      return;
+    }
+
+    const storedSiteId = window.localStorage.getItem(activeSiteStorageKey);
+    const storedSite = initialSites.find((site) => site.id === storedSiteId);
+
+    if (!storedSite) {
+      window.localStorage.removeItem(activeSiteStorageKey);
+      router.replace("/select-site");
+      return;
+    }
+
+    setActiveSite(storedSite);
+    setIsSiteReady(true);
+  }, [activeSiteStorageKey, initialSites, router]);
+
+  function handleActiveSiteChange(siteId: string) {
+    const nextSite = initialSites.find((site) => site.id === siteId);
+
+    if (!nextSite) {
+      return;
+    }
+
+    window.localStorage.setItem(activeSiteStorageKey, nextSite.id);
+    setActiveSite(nextSite);
+    setActiveSectionId("articles");
+  }
 
   function toggleSidebar() {
     if (isSidebarCollapsed) {
@@ -141,6 +204,36 @@ export function AdminShell({
             label="Articles"
             onClick={() => {
               setActiveSectionId("articles");
+              setIsMobileMenuOpen(false);
+            }}
+          />
+
+          <SidebarButton
+            icon={FolderTree}
+            isActive={activeSectionId === "categories"}
+            label="Categories"
+            onClick={() => {
+              setActiveSectionId("categories");
+              setIsMobileMenuOpen(false);
+            }}
+          />
+
+          <SidebarButton
+            icon={Tags}
+            isActive={activeSectionId === "tags"}
+            label="Tags"
+            onClick={() => {
+              setActiveSectionId("tags");
+              setIsMobileMenuOpen(false);
+            }}
+          />
+
+          <SidebarButton
+            icon={Users}
+            isActive={activeSectionId === "members"}
+            label="Utilisateurs"
+            onClick={() => {
+              setActiveSectionId("members");
               setIsMobileMenuOpen(false);
             }}
           />
@@ -218,7 +311,24 @@ export function AdminShell({
     </div>
   );
 
+  if (!isSiteReady) {
+    return <SiteLoadingState />;
+  }
+
+  if (initialSites.length === 0) {
+    return <NoSitesState />;
+  }
+
+  if (!activeSite) {
+    return <SiteLoadingState />;
+  }
+
   return (
+    <ActiveSiteProvider
+      activeSite={activeSite}
+      setActiveSiteId={handleActiveSiteChange}
+      sites={initialSites}
+    >
     <main className="h-screen overflow-hidden bg-white text-stone-950 dark:bg-[#090b0b] dark:text-stone-50">
       <div className="flex h-full flex-col bg-white dark:bg-[#141517]">
         <header className="flex h-18 shrink-0 items-center justify-between bg-white px-5 dark:bg-[#141517] lg:h-20 lg:px-8">
@@ -263,7 +373,13 @@ export function AdminShell({
             </p>
           </div>
 
-          <div className="hidden md:block">
+          <div className="hidden items-center gap-3 md:flex">
+            <SiteSwitcher
+              activeSiteId={activeSite.id}
+              sites={initialSites}
+              onChange={handleActiveSiteChange}
+            />
+
             <button
               type="button"
               onClick={() => {
@@ -291,6 +407,12 @@ export function AdminShell({
           </div>
 
           <div className="flex items-center gap-3 md:hidden">
+            <SiteSwitcher
+              activeSiteId={activeSite.id}
+              sites={initialSites}
+              onChange={handleActiveSiteChange}
+            />
+
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen(true)}
@@ -329,6 +451,33 @@ export function AdminShell({
                 isLabelVisible={areSidebarLabelsVisible}
                 label="Articles"
                 onClick={() => setActiveSectionId("articles")}
+              />
+
+              <SidebarButton
+                icon={FolderTree}
+                isActive={activeSectionId === "categories"}
+                isCollapsed={isSidebarCollapsed}
+                isLabelVisible={areSidebarLabelsVisible}
+                label="Categories"
+                onClick={() => setActiveSectionId("categories")}
+              />
+
+              <SidebarButton
+                icon={Tags}
+                isActive={activeSectionId === "tags"}
+                isCollapsed={isSidebarCollapsed}
+                isLabelVisible={areSidebarLabelsVisible}
+                label="Tags"
+                onClick={() => setActiveSectionId("tags")}
+              />
+
+              <SidebarButton
+                icon={Users}
+                isActive={activeSectionId === "members"}
+                isCollapsed={isSidebarCollapsed}
+                isLabelVisible={areSidebarLabelsVisible}
+                label="Utilisateurs"
+                onClick={() => setActiveSectionId("members")}
               />
 
               <SidebarButton
@@ -422,6 +571,15 @@ export function AdminShell({
           <div className="flex min-h-0 flex-1 overflow-y-auto border-l border-t border-stone-200 bg-white px-6 py-6 [scrollbar-gutter:stable] dark:border-[#2d2e30] dark:bg-[#090b0b] sm:px-10 lg:rounded-tl-[5px]">
             <div className="min-h-full w-full">
               {activeSectionId === "articles" ? <ArticlesAdminList /> : null}
+              {activeSectionId === "categories" ? (
+                <TaxonomyAdminSection mode="categories" />
+              ) : null}
+              {activeSectionId === "tags" ? (
+                <TaxonomyAdminSection mode="tags" />
+              ) : null}
+              {activeSectionId === "members" ? (
+                <MembersAdminSection currentUserId={userId} />
+              ) : null}
               {isProfileActive ? (
                 <ProfileAdminSection
                   initialProfile={profile}
@@ -440,6 +598,71 @@ export function AdminShell({
         </section>
         </div>
       </div>
+    </main>
+    </ActiveSiteProvider>
+  );
+}
+
+function getActiveSiteStorageKey(userId: string) {
+  return `${ACTIVE_SITE_STORAGE_PREFIX}:${userId}`;
+}
+
+function SiteSwitcher({
+  activeSiteId,
+  sites,
+  onChange,
+}: {
+  activeSiteId: string;
+  sites: Site[];
+  onChange: (siteId: string) => void;
+}) {
+  if (sites.length === 1) {
+    const [site] = sites;
+
+    return (
+      <div className="flex h-10 max-w-[180px] items-center rounded-md border border-stone-200 bg-white px-3 text-sm font-medium text-stone-700 dark:border-[#2d2e30] dark:bg-[#111213] dark:text-stone-200">
+        <span className="truncate">{site.name}</span>
+      </div>
+    );
+  }
+
+  return (
+    <SelectDropdown
+      ariaLabel="Choisir un site"
+      className="w-[180px]"
+      options={sites.map((site) => ({
+        id: site.id,
+        label: site.name,
+      }))}
+      placeholder="Choisir un site"
+      value={activeSiteId}
+      onChange={onChange}
+    />
+  );
+}
+
+function SiteLoadingState() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-white px-5 text-stone-950 dark:bg-[#090b0b] dark:text-stone-50">
+      <p className="text-sm text-stone-500 dark:text-stone-300">
+        Chargement du site actif...
+      </p>
+    </main>
+  );
+}
+
+function NoSitesState() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-stone-50 px-5 py-10 text-stone-950 dark:bg-[#090b0b] dark:text-stone-50">
+      <section className="w-full max-w-md rounded-lg border border-stone-200 bg-white p-6 text-center shadow-sm dark:border-[#2d2e30] dark:bg-[#141517]">
+        <p className="text-base font-bold text-[#f44336] dark:text-[#ff8a3d]">
+          Blog Admin Kit
+        </p>
+        <h1 className="mt-3 text-2xl font-bold">Aucun site disponible</h1>
+        <p className="mt-3 text-sm text-stone-500 dark:text-stone-300">
+          Votre compte ne dispose actuellement d'aucun site administrable.
+        </p>
+      </section>
     </main>
   );
 }
