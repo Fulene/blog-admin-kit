@@ -1,8 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { LogIn } from "lucide-react";
-import { useActionState, useTransition } from "react";
+import { Eye, EyeOff, LogIn } from "lucide-react";
+import { useActionState, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import {
   loginAction,
@@ -18,6 +18,7 @@ const initialState: LoginActionState = {
 };
 
 export function LoginForm() {
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [actionState, formAction, isActionPending] = useActionState(
     loginAction,
     initialState,
@@ -81,14 +82,33 @@ export function LoginForm() {
         >
           Mot de passe
         </label>
-        <input
-          id="password"
-          type="password"
-          autoComplete="current-password"
-          disabled={isPending}
-          className="mt-2 h-11 w-full rounded-md border border-stone-200 bg-white px-3 text-sm text-stone-950 outline-none transition-colors placeholder:text-stone-400 focus:border-stone-400 disabled:cursor-wait disabled:bg-stone-50 dark:border-[#2d2e30] dark:bg-[#141517] dark:text-white dark:placeholder:text-stone-500 dark:focus:border-[#ff8a3d] dark:disabled:bg-[#111213]"
-          {...register("password")}
-        />
+        <div className="relative mt-2">
+          <input
+            id="password"
+            type={isPasswordVisible ? "text" : "password"}
+            autoComplete="current-password"
+            disabled={isPending}
+            className="h-11 w-full rounded-md border border-stone-200 bg-white px-3 pr-11 text-sm text-stone-950 outline-none transition-colors placeholder:text-stone-400 focus:border-stone-400 disabled:cursor-wait disabled:bg-stone-50 dark:border-[#2d2e30] dark:bg-[#141517] dark:text-white dark:placeholder:text-stone-500 dark:focus:border-[#ff8a3d] dark:disabled:bg-[#111213]"
+            {...register("password")}
+          />
+          <button
+            type="button"
+            onClick={() => setIsPasswordVisible((value) => !value)}
+            disabled={isPending}
+            className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-950 disabled:cursor-wait disabled:opacity-60 dark:text-stone-400 dark:hover:bg-[#18191b] dark:hover:text-white"
+            aria-label={
+              isPasswordVisible
+                ? "Masquer le mot de passe"
+                : "Afficher le mot de passe"
+            }
+          >
+            {isPasswordVisible ? (
+              <EyeOff className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Eye className="h-4 w-4" aria-hidden="true" />
+            )}
+          </button>
+        </div>
         {errors.password ? (
           <p className="mt-2 text-sm text-[#d93025] dark:text-[#ff8a3d]">
             {errors.password.message}

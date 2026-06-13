@@ -2,7 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2, LogIn, UserPlus } from "lucide-react";
+import {
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  Loader2,
+  LogIn,
+  UserPlus,
+} from "lucide-react";
 import {
   acceptSiteInvitationAction,
   signInForInvitationAction,
@@ -295,6 +302,10 @@ function InviteAuthFields({
   onPasswordConfirmationBlur: () => void;
   onPasswordConfirmationChange: (value: string) => void;
 }) {
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isPasswordConfirmationVisible, setIsPasswordConfirmationVisible] =
+    useState(false);
+
   return (
     <div className="grid gap-4">
       <label>
@@ -310,14 +321,33 @@ function InviteAuthFields({
         <span className="text-sm font-medium text-stone-200">
           Mot de passe
         </span>
-        <input
-          type="password"
-          autoComplete="new-password"
-          disabled={isPending}
-          value={password}
-          onChange={(event) => onPasswordChange(event.target.value)}
-          className="mt-2 h-11 w-full rounded-md border border-[#2d2e30] bg-[#141517] px-3 text-sm text-white outline-none transition-colors placeholder:text-stone-500 focus:border-[#ff8a3d] disabled:cursor-wait disabled:bg-[#111213]"
-        />
+        <div className="relative mt-2">
+          <input
+            type={isPasswordVisible ? "text" : "password"}
+            autoComplete="new-password"
+            disabled={isPending}
+            value={password}
+            onChange={(event) => onPasswordChange(event.target.value)}
+            className="h-11 w-full rounded-md border border-[#2d2e30] bg-[#141517] px-3 pr-11 text-sm text-white outline-none transition-colors placeholder:text-stone-500 focus:border-[#ff8a3d] disabled:cursor-wait disabled:bg-[#111213]"
+          />
+          <button
+            type="button"
+            onClick={() => setIsPasswordVisible((value) => !value)}
+            disabled={isPending}
+            className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-stone-400 transition-colors hover:bg-[#18191b] hover:text-white disabled:cursor-wait disabled:opacity-60"
+            aria-label={
+              isPasswordVisible
+                ? "Masquer le mot de passe"
+                : "Afficher le mot de passe"
+            }
+          >
+            {isPasswordVisible ? (
+              <EyeOff className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Eye className="h-4 w-4" aria-hidden="true" />
+            )}
+          </button>
+        </div>
         <p className="mt-2 text-xs text-stone-500">
           8 caracteres minimum, une majuscule, un chiffre et un symbole.
         </p>
@@ -328,15 +358,38 @@ function InviteAuthFields({
           <span className="text-sm font-medium text-stone-200">
             Confirmation du mot de passe
           </span>
-          <input
-            type="password"
-            autoComplete="new-password"
-            disabled={isPending}
-            value={passwordConfirmation}
-            onBlur={onPasswordConfirmationBlur}
-            onChange={(event) => onPasswordConfirmationChange(event.target.value)}
-            className="mt-2 h-11 w-full rounded-md border border-[#2d2e30] bg-[#141517] px-3 text-sm text-white outline-none transition-colors placeholder:text-stone-500 focus:border-[#ff8a3d] disabled:cursor-wait disabled:bg-[#111213]"
-          />
+          <div className="relative mt-2">
+            <input
+              type={isPasswordConfirmationVisible ? "text" : "password"}
+              autoComplete="new-password"
+              disabled={isPending}
+              value={passwordConfirmation}
+              onBlur={onPasswordConfirmationBlur}
+              onChange={(event) =>
+                onPasswordConfirmationChange(event.target.value)
+              }
+              className="h-11 w-full rounded-md border border-[#2d2e30] bg-[#141517] px-3 pr-11 text-sm text-white outline-none transition-colors placeholder:text-stone-500 focus:border-[#ff8a3d] disabled:cursor-wait disabled:bg-[#111213]"
+            />
+            <button
+              type="button"
+              onClick={() =>
+                setIsPasswordConfirmationVisible((value) => !value)
+              }
+              disabled={isPending}
+              className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-stone-400 transition-colors hover:bg-[#18191b] hover:text-white disabled:cursor-wait disabled:opacity-60"
+              aria-label={
+                isPasswordConfirmationVisible
+                  ? "Masquer la confirmation du mot de passe"
+                  : "Afficher la confirmation du mot de passe"
+              }
+            >
+              {isPasswordConfirmationVisible ? (
+                <EyeOff className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <Eye className="h-4 w-4" aria-hidden="true" />
+              )}
+            </button>
+          </div>
           {shouldShowErrors ? (
             <PasswordValidationMessage
               password={password}
