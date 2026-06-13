@@ -54,7 +54,7 @@ export function SiteSelectionPage({
               key={site.id}
               type="button"
               onClick={() => selectSite(site)}
-              className="rounded-lg border border-stone-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-[#f44336] hover:bg-red-50 dark:border-[#2d2e30] dark:bg-[#141517] dark:hover:border-[#ff8a3d] dark:hover:bg-[#24262a]"
+              className="cursor-pointer rounded-lg border border-stone-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-[#f44336] hover:bg-red-50 dark:border-[#2d2e30] dark:bg-[#141517] dark:hover:border-[#ff8a3d] dark:hover:bg-[#24262a]"
             >
               <span className="block font-semibold text-stone-950 dark:text-white">
                 {site.name}
