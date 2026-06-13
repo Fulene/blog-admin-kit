@@ -66,12 +66,10 @@ export function MembersAdminSection({
   canManageInvitations,
   currentUserId,
   mode,
-  onCanManageInvitationsChange,
 }: {
   canManageInvitations: boolean;
   currentUserId: string;
   mode: MembersTab;
-  onCanManageInvitationsChange: (canManageInvitations: boolean) => void;
 }) {
   const { activeSiteId } = useActiveSite();
   const [members, setMembers] = useState<SiteMember[]>([]);
@@ -141,22 +139,7 @@ export function MembersAdminSection({
         : 0,
     [members, adminRoleId],
   );
-  const currentMember = useMemo(
-    () => members.find((member) => member.user_id === currentUserId) ?? null,
-    [currentUserId, members],
-  );
-  const canManageMembers =
-    isAdminRoleCode(currentMember?.roles?.code);
-
-  useEffect(() => {
-    if (canManageInvitations !== canManageMembers) {
-      onCanManageInvitationsChange(canManageMembers);
-    }
-  }, [
-    canManageInvitations,
-    canManageMembers,
-    onCanManageInvitationsChange,
-  ]);
+  const canManageMembers = canManageInvitations;
   const roleFilters = useMemo(
     () => [
       { id: "all", label: "Tous" },
@@ -274,12 +257,6 @@ export function MembersAdminSection({
         getRoles(),
         getSiteInvitations(activeSiteId),
       ]);
-      const nextCurrentMember =
-        memberData.find((member) => member.user_id === currentUserId) ?? null;
-      const nextCanManageInvitations =
-        isAdminRoleCode(nextCurrentMember?.roles?.code);
-
-      onCanManageInvitationsChange(nextCanManageInvitations);
       setMembers(memberData);
       setRoles(roleData);
       setInvitations(invitationData);
@@ -493,7 +470,7 @@ export function MembersAdminSection({
           </span>
         </div>
 
-        <div className="flex shrink-0 flex-nowrap items-center justify-end gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-start gap-2 sm:justify-end">
           {roleFilters.map((filter) => {
             const isActive = roleFilter === filter.id;
 
@@ -503,7 +480,7 @@ export function MembersAdminSection({
                 type="button"
                 onClick={() => setRoleFilter(filter.id)}
                 className={[
-                  "h-10 cursor-pointer rounded-md border px-4 text-sm font-medium transition-colors",
+                  "h-9 cursor-pointer rounded-md border px-3 text-xs font-medium transition-colors sm:h-10 sm:px-4 sm:text-sm",
                   isActive
                     ? "border-[#f44336] bg-red-50 text-stone-950 dark:border-[#ff8a3d] dark:bg-[#24262a] dark:text-white"
                     : "border-stone-200 bg-white text-stone-600 hover:bg-stone-100 hover:text-stone-950 dark:border-[#2d2e30] dark:bg-[#141517] dark:text-stone-300 dark:hover:bg-[#18191b] dark:hover:text-white",
@@ -547,13 +524,13 @@ export function MembersAdminSection({
                 <div
                   key={member.user_id}
                   className={[
-                    "grid gap-3 px-4 py-3 md:items-center",
+                    "grid gap-3 px-4 py-4 lg:items-center",
                     canManageMembers
-                      ? "md:grid-cols-[minmax(280px,1.3fr)_minmax(140px,0.8fr)_minmax(140px,0.8fr)_180px_auto]"
-                      : "md:grid-cols-[minmax(280px,1.3fr)_minmax(140px,0.8fr)_minmax(140px,0.8fr)_120px]",
+                      ? "sm:grid-cols-2 lg:grid-cols-[minmax(200px,1fr)_minmax(100px,0.65fr)_minmax(100px,0.65fr)_140px_auto] xl:grid-cols-[minmax(260px,1.15fr)_minmax(130px,0.75fr)_minmax(130px,0.75fr)_180px_auto]"
+                      : "sm:grid-cols-2 lg:grid-cols-[minmax(200px,1fr)_minmax(100px,0.65fr)_minmax(100px,0.65fr)_120px]",
                   ].join(" ")}
                 >
-                  <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex min-w-0 items-center gap-3 sm:col-span-2 lg:col-span-1">
                     <MemberAvatar member={member} />
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-stone-950 dark:text-white">
@@ -564,14 +541,24 @@ export function MembersAdminSection({
                       </p>
                     </div>
                   </div>
-                  <p className="min-w-0 truncate text-center text-sm text-stone-600 dark:text-stone-300">
-                    {member.profiles?.first_name ?? "-"}
-                  </p>
-                  <p className="min-w-0 truncate text-center text-sm text-stone-600 dark:text-stone-300">
-                    {member.profiles?.last_name ?? "-"}
-                  </p>
+                  <div className="member-row-cell min-w-0 rounded-lg bg-stone-50 px-3 py-2 dark:bg-[#141517] lg:bg-transparent lg:px-0 lg:py-0 lg:dark:bg-transparent">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-400 lg:hidden">
+                      Prenom
+                    </p>
+                    <p className="min-w-0 truncate text-sm text-stone-700 dark:text-stone-300 lg:text-center">
+                      {member.profiles?.first_name ?? "-"}
+                    </p>
+                  </div>
+                  <div className="member-row-cell min-w-0 rounded-lg bg-stone-50 px-3 py-2 dark:bg-[#141517] lg:bg-transparent lg:px-0 lg:py-0 lg:dark:bg-transparent">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-400 lg:hidden">
+                      Nom
+                    </p>
+                    <p className="min-w-0 truncate text-sm text-stone-700 dark:text-stone-300 lg:text-center">
+                      {member.profiles?.last_name ?? "-"}
+                    </p>
+                  </div>
                   {canManageMembers ? (
-                    <div className="w-full md:w-[180px] md:justify-self-end">
+                    <div className="w-full sm:col-span-2 lg:col-span-1 lg:w-[140px] lg:justify-self-end xl:w-[180px]">
                       <SelectDropdown
                         ariaLabel={`Role de ${displayName}`}
                         options={roleOptions}
@@ -582,9 +569,14 @@ export function MembersAdminSection({
                       />
                     </div>
                   ) : (
-                    <span className="text-sm font-semibold text-stone-700 dark:text-stone-200 md:justify-self-end">
-                      {member.roles ? getRoleDisplayLabel(member.roles) : "-"}
-                    </span>
+                    <div className="member-row-cell rounded-lg bg-stone-50 px-3 py-2 dark:bg-[#141517] lg:bg-transparent lg:px-0 lg:py-0 lg:dark:bg-transparent lg:justify-self-end">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-400 lg:hidden">
+                        Role
+                      </p>
+                      <span className="text-sm font-semibold text-stone-700 dark:text-stone-200">
+                        {member.roles ? getRoleDisplayLabel(member.roles) : "-"}
+                      </span>
+                    </div>
                   )}
                   {canManageMembers ? (
                     <button
@@ -596,7 +588,7 @@ export function MembersAdminSection({
                           ? "Impossible de retirer le dernier admin"
                           : undefined
                       }
-                      className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 text-sm font-semibold text-[#f44336] hover:bg-red-100 disabled:cursor-default disabled:opacity-50 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
+                      className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 text-sm font-semibold text-[#f44336] hover:bg-red-100 disabled:cursor-default disabled:opacity-50 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20 sm:col-span-2 lg:col-span-1 lg:w-auto"
                     >
                       <Trash2 className="h-4 w-4" aria-hidden="true" />
                       Retirer
@@ -622,7 +614,7 @@ export function MembersAdminSection({
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          <div className="admin-data-toolbar flex flex-col gap-3">
+          <div className="admin-data-toolbar admin-data-toolbar-stacked-tablet flex flex-col gap-3">
             <div className="relative min-w-0">
               <Search
                 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400"
@@ -657,7 +649,7 @@ export function MembersAdminSection({
               </span>
             </div>
 
-            <div className="flex shrink-0 flex-nowrap items-center justify-end gap-2">
+            <div className="flex shrink-0 flex-wrap items-center justify-start gap-2 sm:justify-end">
               {INVITATION_STATUS_FILTERS.map((filter) => {
                 const isActive = invitationStatusFilter === filter.value;
 
@@ -667,7 +659,7 @@ export function MembersAdminSection({
                     type="button"
                     onClick={() => setInvitationStatusFilter(filter.value)}
                     className={[
-                      "h-10 cursor-pointer rounded-md border px-4 text-sm font-medium transition-colors",
+                      "h-9 cursor-pointer rounded-md border px-3 text-xs font-medium transition-colors sm:h-10 sm:px-4 sm:text-sm",
                       isActive
                         ? "border-[#f44336] bg-red-50 text-stone-950 dark:border-[#ff8a3d] dark:bg-[#24262a] dark:text-white"
                         : "border-stone-200 bg-white text-stone-600 hover:bg-stone-100 hover:text-stone-950 dark:border-[#2d2e30] dark:bg-[#141517] dark:text-stone-300 dark:hover:bg-[#18191b] dark:hover:text-white",
@@ -837,7 +829,7 @@ function InviteUserDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] flex justify-end">
+    <div className="fixed inset-0 z-[9999] flex justify-end overflow-hidden">
       <button
         type="button"
         onClick={onClose}
@@ -845,7 +837,7 @@ function InviteUserDrawer({
         aria-label="Fermer le panneau"
       />
 
-      <aside className="article-create-drawer-in relative z-[1] flex h-full w-full flex-col border-l border-stone-200 bg-white shadow-2xl dark:border-[#2d2e30] dark:bg-[#141517] sm:max-w-[520px]">
+      <aside className="article-create-drawer-in relative z-[1] flex h-full max-h-dvh w-full flex-col border-l border-stone-200 bg-white shadow-2xl dark:border-[#2d2e30] dark:bg-[#141517] sm:max-w-none lg:max-w-[520px]">
         <header className="flex shrink-0 items-center justify-between border-b border-stone-200 px-5 py-4 dark:border-[#2d2e30]">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#f44336] dark:text-[#ff8a3d]">
@@ -909,12 +901,12 @@ function InviteUserDrawer({
 
         </div>
 
-        <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-stone-200 px-5 py-4 dark:border-[#2d2e30]">
+        <footer className="sticky bottom-0 flex shrink-0 flex-col-reverse gap-3 border-t border-stone-200 bg-white px-5 py-4 dark:border-[#2d2e30] dark:bg-[#141517] sm:flex-row sm:items-center sm:justify-end">
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="h-10 cursor-pointer rounded-md px-4 text-sm font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-950 disabled:cursor-default disabled:opacity-60 dark:text-stone-300 dark:hover:bg-[#18191b] dark:hover:text-white"
+            className="h-10 w-full cursor-pointer rounded-md px-4 text-sm font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-950 disabled:cursor-default disabled:opacity-60 dark:text-stone-300 dark:hover:bg-[#18191b] dark:hover:text-white sm:w-auto"
           >
             Annuler
           </button>
@@ -924,7 +916,7 @@ function InviteUserDrawer({
             onClick={() => {
               void handleSubmit();
             }}
-            className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md bg-[#f44336] px-4 text-sm font-semibold text-white hover:bg-[#d7382d] disabled:cursor-default disabled:opacity-60 dark:bg-[#ff8a3d] dark:text-stone-950 dark:hover:bg-[#ff7920]"
+            className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-[#f44336] px-4 text-sm font-semibold text-white hover:bg-[#d7382d] disabled:cursor-default disabled:opacity-60 dark:bg-[#ff8a3d] dark:text-stone-950 dark:hover:bg-[#ff7920] sm:w-auto"
           >
             {isSubmitting ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -983,7 +975,7 @@ function InvitationLinkPanel({
             </button>
           </div>
         </div>
-        <div className="flex shrink-0 gap-2">
+        <div className="flex shrink-0 justify-center gap-2 lg:justify-end">
           <button
             type="button"
             onClick={onDismiss}
@@ -1049,8 +1041,8 @@ function InvitationsPanel({
 
             return (
               <div key={invitation.id}>
-                <div className="grid gap-3 px-4 py-3 lg:grid-cols-[1fr_140px_140px_180px_auto] lg:items-center">
-                  <div className="min-w-0">
+                <div className="invitations-row-grid grid gap-3 px-4 py-4 sm:grid-cols-2 lg:items-center">
+                  <div className="min-w-0 sm:col-span-2 lg:col-span-1 lg:w-full lg:justify-self-stretch">
                   <p className="truncate font-semibold text-stone-950 dark:text-white">
                     {invitation.email}
                   </p>
@@ -1058,20 +1050,35 @@ function InvitationsPanel({
                       Invité le {formatDateTime(invitation.created_at)}
                   </p>
                 </div>
-                <span className="text-sm font-medium text-stone-600 dark:text-stone-300">
-                  {invitation.roles ? getRoleDisplayLabel(invitation.roles) : "-"}
-                </span>
-                <InvitationStatusBadge status={invitation.status} />
-                <span className="text-sm text-stone-500 dark:text-stone-400">
-                  {getInvitationTimelineLabel(invitation)}
-                </span>
-                  <div className="flex min-w-[224px] flex-wrap justify-start gap-2 lg:justify-end">
+                <div className="invitation-row-cell rounded-lg bg-stone-50 px-3 py-2 dark:bg-[#111213] lg:flex lg:w-full lg:items-center lg:justify-center lg:bg-transparent lg:px-0 lg:py-0 lg:text-center lg:dark:bg-transparent">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-400 lg:hidden">
+                    Role
+                  </p>
+                  <span className="text-sm font-medium text-stone-600 dark:text-stone-300">
+                    {invitation.roles ? getRoleDisplayLabel(invitation.roles) : "-"}
+                  </span>
+                </div>
+                <div className="invitation-row-cell rounded-lg bg-stone-50 px-3 py-2 dark:bg-[#111213] lg:flex lg:w-full lg:items-center lg:justify-center lg:bg-transparent lg:px-0 lg:py-0 lg:text-center lg:dark:bg-transparent">
+                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-400 lg:hidden">
+                    Statut
+                  </p>
+                  <InvitationStatusBadge status={invitation.status} />
+                </div>
+                <div className="invitation-row-cell rounded-lg bg-stone-50 px-3 py-2 dark:bg-[#111213] sm:col-span-2 lg:col-span-1 lg:flex lg:w-full lg:items-center lg:justify-center lg:bg-transparent lg:px-0 lg:py-0 lg:text-center lg:dark:bg-transparent">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-400 lg:hidden">
+                    Suivi
+                  </p>
+                  <span className="text-sm text-stone-500 dark:text-stone-400">
+                    {getInvitationTimelineLabel(invitation)}
+                  </span>
+                </div>
+                  <div className="invitation-row-actions flex min-w-0 flex-wrap justify-start gap-2 sm:col-span-2 lg:col-span-1 lg:w-full">
                   {canShowInvitation ? (
                     <button
                       type="button"
                       onClick={() => onShowInvitation(invitation)}
                       disabled={isRegenerating || isCancelling}
-                      className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-stone-200 bg-stone-50 px-3 text-xs font-semibold text-stone-600 hover:bg-stone-100 hover:text-stone-950 disabled:cursor-default disabled:opacity-60 dark:border-[#2d2e30] dark:bg-[#111213] dark:text-stone-300 dark:hover:bg-[#18191b] dark:hover:text-white"
+                      className="inline-flex h-9 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border border-stone-200 bg-stone-50 px-3 text-xs font-semibold text-stone-600 hover:bg-stone-100 hover:text-stone-950 disabled:cursor-default disabled:opacity-60 dark:border-[#2d2e30] dark:bg-[#111213] dark:text-stone-300 dark:hover:bg-[#18191b] dark:hover:text-white sm:flex-none"
                     >
                       {isRegenerating ? (
                         <Loader2
@@ -1092,13 +1099,13 @@ function InvitationsPanel({
                       type="button"
                       onClick={() => onCancelInvitation(invitation)}
                       disabled={isRegenerating || isCancelling}
-                      className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 text-xs font-semibold text-[#f44336] hover:bg-red-100 disabled:cursor-default disabled:opacity-60 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
+                      className="inline-flex h-9 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 text-xs font-semibold text-[#f44336] hover:bg-red-100 disabled:cursor-default disabled:opacity-60 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20 sm:flex-none"
                     >
                       Annuler
                     </button>
                   ) : null}
                   {!canShowInvitation && !canCancel ? (
-                      <span className="inline-flex h-9 min-w-[224px] items-center justify-center text-xs font-medium text-stone-400 dark:text-stone-500">
+                      <span className="inline-flex h-9 w-full items-center justify-center text-xs font-medium text-stone-400 dark:text-stone-500">
                         Aucune action
                       </span>
                   ) : null}
@@ -1180,28 +1187,28 @@ function PaginationControls({
   return (
     <div
       className={[
-        "flex flex-wrap items-center gap-3 py-1 text-sm text-stone-600 dark:text-stone-300",
+        "flex flex-nowrap items-center justify-center gap-1 py-1 text-[11px] text-stone-600 dark:text-stone-300 sm:gap-2 sm:text-sm",
         className ?? "",
       ].join(" ")}
     >
-      <div className="flex h-11 items-center gap-3 rounded-full bg-stone-100 px-0.5 dark:bg-[#111213]">
+      <div className="flex h-9 items-center gap-1 rounded-full bg-stone-100 px-0.5 dark:bg-[#111213] sm:h-11 sm:gap-3">
         <button
           type="button"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={!canGoPrevious}
-          className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-100 disabled:cursor-default disabled:bg-stone-100 disabled:text-stone-300 dark:border-[#2d2e30] dark:bg-[#141517] dark:text-stone-300 dark:hover:bg-[#1c1d20] dark:disabled:bg-[#24262a] dark:disabled:text-stone-600"
+          className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border sm:h-10 sm:w-10 border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-100 disabled:cursor-default disabled:bg-stone-100 disabled:text-stone-300 dark:border-[#2d2e30] dark:bg-[#141517] dark:text-stone-300 dark:hover:bg-[#1c1d20] dark:disabled:bg-[#24262a] dark:disabled:text-stone-600"
           aria-label="Page precedente"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden="true" />
         </button>
-        <span className="w-16 text-center text-sm font-semibold tabular-nums text-stone-700 dark:text-stone-200">
+        <span className="w-11 text-center text-[11px] font-semibold tabular-nums sm:w-16 sm:text-sm text-stone-700 dark:text-stone-200">
           {currentPage} of {totalPages}
         </span>
         <button
           type="button"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={!canGoNext}
-          className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-100 disabled:cursor-default disabled:bg-stone-100 disabled:text-stone-300 dark:border-[#2d2e30] dark:bg-[#141517] dark:text-stone-300 dark:hover:bg-[#1c1d20] dark:disabled:bg-[#24262a] dark:disabled:text-stone-600"
+          className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border sm:h-10 sm:w-10 border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-100 disabled:cursor-default disabled:bg-stone-100 disabled:text-stone-300 dark:border-[#2d2e30] dark:bg-[#141517] dark:text-stone-300 dark:hover:bg-[#1c1d20] dark:disabled:bg-[#24262a] dark:disabled:text-stone-600"
           aria-label="Page suivante"
         >
           <ChevronRight className="h-4 w-4" aria-hidden="true" />
@@ -1221,10 +1228,10 @@ function ItemsPerPageControl({
   return (
     <SelectDropdown
       ariaLabel="Nombre d'utilisateurs par page"
-      className="w-[132px]"
+      className="w-[104px] sm:w-[132px]"
       options={ITEMS_PER_PAGE_OPTIONS.map((option) => ({
         id: String(option),
-        label: `${option} / page`,
+        label: `${option}/p`,
       }))}
       value={String(itemsPerPage)}
       onChange={(value) => onItemsPerPageChange(Number(value))}

@@ -10,12 +10,11 @@ import {
   LogOut,
   Mail,
   Menu,
-  Moon,
+  Palette,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
   ShieldCheck,
-  Sun,
   Tags,
   UserRound,
   Users,
@@ -40,9 +39,14 @@ type AdminSectionId =
   | "members-invitations"
   | "profile-edit"
   | "profile-security";
-type ThemeMode = "light" | "dark";
+type ThemeMode = "light" | "dark" | "forest";
 
 const ACTIVE_SITE_STORAGE_PREFIX = "blog-admin-kit-active-site";
+const themeOptions = [
+  { id: "light", label: "Clair" },
+  { id: "dark", label: "Sombre" },
+  { id: "forest", label: "Sapin" },
+] satisfies Array<{ id: ThemeMode; label: string }>;
 
 const profileSectionIds: AdminSectionId[] = [
   "profile-edit",
@@ -111,6 +115,7 @@ export function AdminShell({
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [areSidebarLabelsVisible, setAreSidebarLabelsVisible] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileMenuClosing, setIsMobileMenuClosing] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
   const isProfileActive = profileSectionIds.includes(activeSectionId);
@@ -119,6 +124,8 @@ export function AdminShell({
     false,
   );
   const [canManageContent, setCanManageContent] = useState(false);
+  const [areSitePermissionsLoaded, setAreSitePermissionsLoaded] =
+    useState(false);
   const visibleMemberSubsections = canManageInvitations
     ? memberSubsections
     : memberSubsections.filter((section) => section.id !== "members-invitations");
@@ -139,17 +146,24 @@ export function AdminShell({
   useEffect(() => {
     if (
       activeSite &&
+      areSitePermissionsLoaded &&
       activeSectionId === "members-invitations" &&
       !canManageInvitations
     ) {
       setActiveSectionId("members-list");
     }
-  }, [activeSectionId, activeSite, canManageInvitations]);
+  }, [
+    activeSectionId,
+    activeSite,
+    areSitePermissionsLoaded,
+    canManageInvitations,
+  ]);
 
   useEffect(() => {
     if (!activeSite?.id) {
       setCanManageInvitations(false);
       setCanManageContent(false);
+      setAreSitePermissionsLoaded(true);
       return;
     }
 
@@ -157,18 +171,21 @@ export function AdminShell({
 
     setCanManageInvitations(false);
     setCanManageContent(false);
+    setAreSitePermissionsLoaded(false);
 
     void getCurrentSitePermissionsAction({ siteId: activeSite.id })
       .then((permissions) => {
         if (isCurrentSite) {
           setCanManageInvitations(permissions.canManageUsers);
           setCanManageContent(permissions.canManageContent);
+          setAreSitePermissionsLoaded(true);
         }
       })
       .catch(() => {
         if (isCurrentSite) {
           setCanManageInvitations(false);
           setCanManageContent(false);
+          setAreSitePermissionsLoaded(true);
         }
       });
 
@@ -192,13 +209,24 @@ export function AdminShell({
 
     const storedTheme = window.localStorage.getItem("blog-admin-kit-theme");
 
-    if (storedTheme === "dark" || storedTheme === "light") {
+    if (
+      storedTheme === "dark" ||
+      storedTheme === "light" ||
+      storedTheme === "forest"
+    ) {
       setThemeMode(storedTheme);
     }
   }, []);
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", themeMode === "dark");
+    document.documentElement.classList.toggle(
+      "dark",
+      themeMode === "dark" || themeMode === "forest",
+    );
+    document.documentElement.classList.toggle(
+      "theme-forest",
+      themeMode === "forest",
+    );
     window.localStorage.setItem("blog-admin-kit-theme", themeMode);
   }, [themeMode]);
 
@@ -214,6 +242,7 @@ export function AdminShell({
       setActiveSite(site);
       setCanManageInvitations(false);
       setCanManageContent(false);
+      setAreSitePermissionsLoaded(false);
       window.localStorage.setItem(activeSiteStorageKey, site.id);
       setIsSiteReady(true);
       return;
@@ -231,6 +260,7 @@ export function AdminShell({
     setActiveSite(storedSite);
     setCanManageInvitations(false);
     setCanManageContent(false);
+    setAreSitePermissionsLoaded(false);
     setIsSiteReady(true);
   }, [activeSiteStorageKey, initialSites, router]);
 
@@ -245,6 +275,7 @@ export function AdminShell({
     setActiveSite(nextSite);
     setCanManageInvitations(false);
     setCanManageContent(false);
+    setAreSitePermissionsLoaded(false);
     setActiveSectionId("articles");
   }
 
@@ -259,38 +290,112 @@ export function AdminShell({
     setAreSidebarLabelsVisible(false);
   }
 
+  function openMobileMenu() {
+    setIsMobileMenuClosing(false);
+    setIsMobileMenuOpen(true);
+  }
+
+  function closeMobileMenu() {
+    setIsMobileMenuClosing(true);
+  }
+
+  function finishMobileMenuClose() {
+    if (!isMobileMenuClosing) {
+      return;
+    }
+
+    setIsMobileMenuOpen(false);
+    setIsMobileMenuClosing(false);
+  }
+
   const mobileMenu = (
     <div className="fixed left-0 top-0 z-[9999] h-dvh w-dvw lg:hidden">
       <button
         type="button"
-        onClick={() => setIsMobileMenuOpen(false)}
-        className="mobile-menu-backdrop-in absolute inset-0 z-0 cursor-pointer bg-black/35"
+        onClick={closeMobileMenu}
+        className={[
+          isMobileMenuClosing
+            ? "mobile-menu-backdrop-out"
+            : "mobile-menu-backdrop-in",
+          "absolute inset-0 z-0 cursor-pointer bg-black/35",
+        ].join(" ")}
         aria-label="Fermer le menu"
       />
 
       <aside
-        className="mobile-menu-drawer-in absolute bottom-0 right-0 top-0 z-[1] flex w-[min(86dvw,340px)] flex-col border-l border-stone-200 bg-white px-5 py-6 shadow-2xl dark:border-[#2d2e30] dark:bg-[#141517]"
+        className={[
+          isMobileMenuClosing ? "mobile-menu-drawer-out" : "mobile-menu-drawer-in",
+          "absolute bottom-0 right-0 top-0 z-[1] flex w-[min(88dvw,360px)] flex-col border-l border-stone-200 bg-white px-5 py-6 shadow-2xl dark:border-[#2d2e30] dark:bg-[#141517]",
+        ].join(" ")}
+        onAnimationEnd={finishMobileMenuClose}
       >
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSectionId("profile-edit");
+                setIsProfileMenuOpen(true);
+                closeMobileMenu();
+              }}
+              className="h-9 w-9 shrink-0 cursor-pointer overflow-hidden rounded-full border border-stone-200 bg-stone-100 dark:border-[#2d2e30] dark:bg-[#24262a]"
+              aria-label="Modifier mon profil"
+            >
+              {profile?.avatarDisplayUrl && !hasHeaderAvatarError ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={profile.avatarDisplayUrl}
+                  alt={userLabel}
+                  className="h-full w-full object-cover"
+                  onError={() => setHasHeaderAvatarError(true)}
+                />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-xs font-bold text-stone-500 dark:text-stone-200">
+                  {headerInitials}
+                </span>
+              )}
+            </button>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-stone-950 dark:text-white">
+                {userLabel}
+              </p>
+              <p className="truncate text-[11px] text-stone-500 dark:text-stone-400">
+                {userEmail}
+              </p>
+            </div>
+          </div>
           <button
             type="button"
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-stone-100 text-stone-700 hover:bg-stone-200 dark:bg-[#151617] dark:text-stone-300 dark:hover:bg-[#101112]"
+            onClick={closeMobileMenu}
+            className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-stone-100 text-stone-700 hover:bg-stone-200 dark:bg-[#151617] dark:text-stone-300 dark:hover:bg-[#101112]"
             aria-label="Fermer le menu"
             title="Fermer"
           >
-            <X className="h-5 w-5" aria-hidden="true" />
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 
-        <nav className="mt-8 flex flex-col gap-2">
+        {activeSite ? (
+          <div className="mt-9 flex justify-center">
+            <SiteSwitcher
+              activeSiteId={activeSite.id}
+              sites={initialSites}
+              onChange={(siteId) => {
+                handleActiveSiteChange(siteId);
+                closeMobileMenu();
+              }}
+            />
+          </div>
+        ) : null}
+
+        <nav className="mt-5 flex flex-col gap-1">
           <SidebarButton
             icon={FileText}
             isActive={activeSectionId === "articles"}
             label="Articles"
             onClick={() => {
               setActiveSectionId("articles");
-              setIsMobileMenuOpen(false);
+              closeMobileMenu();
             }}
           />
 
@@ -300,7 +405,7 @@ export function AdminShell({
             label="Categories"
             onClick={() => {
               setActiveSectionId("categories");
-              setIsMobileMenuOpen(false);
+              closeMobileMenu();
             }}
           />
 
@@ -310,7 +415,7 @@ export function AdminShell({
             label="Tags"
             onClick={() => {
               setActiveSectionId("tags");
-              setIsMobileMenuOpen(false);
+              closeMobileMenu();
             }}
           />
 
@@ -321,12 +426,14 @@ export function AdminShell({
             label="Utilisateurs"
             onClick={() => {
               setIsMembersMenuOpen((value) => !value);
+              setIsProfileMenuOpen(false);
             }}
           />
 
           <div
             className={[
-              "ml-7 mt-2 grid border-l border-stone-200 pl-3 transition-[grid-template-rows] duration-200 dark:border-[#2d2e30]",
+              "ml-7 grid border-l border-stone-200 pl-3 transition-[grid-template-rows,margin-top] duration-200 dark:border-[#2d2e30]",
+              isMembersMenuOpen ? "mt-2" : "mt-0",
               isMembersMenuOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
             ].join(" ")}
           >
@@ -340,7 +447,7 @@ export function AdminShell({
                   label={section.label}
                   onClick={() => {
                     setActiveSectionId(section.id);
-                    setIsMobileMenuOpen(false);
+                    closeMobileMenu();
                   }}
                 />
               ))}
@@ -354,12 +461,14 @@ export function AdminShell({
             label="Mon profil"
             onClick={() => {
               setIsProfileMenuOpen((value) => !value);
+              setIsMembersMenuOpen(false);
             }}
           />
 
           <div
             className={[
-              "ml-7 mt-2 grid border-l border-stone-200 pl-3 transition-[grid-template-rows] duration-200 dark:border-[#2d2e30]",
+              "ml-7 grid border-l border-stone-200 pl-3 transition-[grid-template-rows,margin-top] duration-200 dark:border-[#2d2e30]",
+              isProfileMenuOpen ? "mt-2" : "mt-0",
               isProfileMenuOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
             ].join(" ")}
           >
@@ -373,7 +482,7 @@ export function AdminShell({
                   label={section.label}
                   onClick={() => {
                     setActiveSectionId(section.id);
-                    setIsMobileMenuOpen(false);
+                    closeMobileMenu();
                   }}
                 />
               ))}
@@ -382,26 +491,10 @@ export function AdminShell({
         </nav>
 
         <div className="mt-auto flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={() =>
-              setThemeMode((mode) => (mode === "dark" ? "light" : "dark"))
-            }
-            className="flex h-12 cursor-pointer items-center gap-4 rounded-md px-4 text-sm font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-950 dark:text-stone-300 dark:hover:bg-[#18191b] dark:hover:text-white"
-          >
-            {themeMode === "dark" ? (
-              <Sun
-                className="h-5 w-5 shrink-0 text-[#ff6b16]"
-                aria-hidden="true"
-              />
-            ) : (
-              <Moon
-                className="h-5 w-5 shrink-0 text-stone-700"
-                aria-hidden="true"
-              />
-            )}
-            <span>{themeMode === "dark" ? "Mode clair" : "Mode sombre"}</span>
-          </button>
+          <ThemeSelector
+            themeMode={themeMode}
+            onThemeChange={setThemeMode}
+          />
 
           <form action={logoutAction}>
             <button
@@ -482,7 +575,7 @@ export function AdminShell({
             </p>
           </div>
 
-          <div className="hidden items-center gap-3 md:flex">
+          <div className="hidden items-center gap-3 lg:flex">
             <SiteSwitcher
               activeSiteId={activeSite.id}
               sites={initialSites}
@@ -515,16 +608,10 @@ export function AdminShell({
             </button>
           </div>
 
-          <div className="flex items-center gap-3 md:hidden">
-            <SiteSwitcher
-              activeSiteId={activeSite.id}
-              sites={initialSites}
-              onChange={handleActiveSiteChange}
-            />
-
+          <div className="flex items-center gap-3 lg:hidden">
             <button
               type="button"
-              onClick={() => setIsMobileMenuOpen(true)}
+              onClick={openMobileMenu}
               className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-stone-300 bg-white text-stone-700 hover:bg-stone-100 dark:border-[#2d2e30] dark:bg-[#111213] dark:text-stone-200 dark:hover:bg-[#18191b] lg:hidden"
               aria-label="Ouvrir le menu"
               title="Menu"
@@ -534,7 +621,7 @@ export function AdminShell({
           </div>
         </header>
 
-        {isMounted && isMobileMenuOpen
+        {isMounted && (isMobileMenuOpen || isMobileMenuClosing)
           ? createPortal(mobileMenu, document.body)
           : null}
 
@@ -649,37 +736,12 @@ export function AdminShell({
               ) : null}
             </nav>
 
-            <button
-              type="button"
-              onClick={() =>
-                setThemeMode((mode) => (mode === "dark" ? "light" : "dark"))
-              }
-              className={[
-                "mt-auto flex h-12 cursor-pointer items-center gap-4 rounded-md text-sm font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-950 dark:text-stone-300 dark:hover:bg-[#18191b] dark:hover:text-white",
-                "w-full overflow-hidden px-4",
-              ].join(" ")}
-              title={themeMode === "dark" ? "Mode clair" : "Mode sombre"}
-            >
-              {themeMode === "dark" ? (
-                <Sun
-                    className="h-5 w-5 shrink-0 text-[#ff8a3d]"
-                  aria-hidden="true"
-                />
-              ) : (
-                <Moon
-                  className="h-5 w-5 shrink-0 text-stone-700"
-                  aria-hidden="true"
-                />
-              )}
-              <span
-                className={[
-                  "whitespace-nowrap transition-opacity duration-150 ease-out",
-                  areSidebarLabelsVisible ? "opacity-100" : "opacity-0",
-                ].join(" ")}
-              >
-                {themeMode === "dark" ? "Mode clair" : "Mode sombre"}
-              </span>
-            </button>
+            <ThemeSelector
+              className="mt-auto"
+              isLabelVisible={areSidebarLabelsVisible}
+              themeMode={themeMode}
+              onThemeChange={setThemeMode}
+            />
 
             <form action={logoutAction}>
               <button
@@ -708,7 +770,7 @@ export function AdminShell({
         </aside>
 
         <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-white dark:bg-[#141517]">
-          <div className="flex min-h-0 flex-1 overflow-y-auto border-l border-t border-stone-200 bg-white px-6 py-6 [scrollbar-gutter:stable] dark:border-[#2d2e30] dark:bg-[#090b0b] sm:px-10 lg:rounded-tl-[5px]">
+          <div className="flex min-h-0 flex-1 overflow-y-auto border-l border-t border-stone-200 bg-white px-6 pb-12 pt-6 [scrollbar-gutter:stable] dark:border-[#2d2e30] dark:bg-[#090b0b] sm:px-10 sm:pb-14 lg:rounded-tl-[5px]">
             <div className="min-h-full w-full">
               {activeSectionId === "articles" ? (
                 <ArticlesAdminList canManageContent={canManageContent} />
@@ -734,7 +796,6 @@ export function AdminShell({
                       ? "invitations"
                       : "members"
                   }
-                  onCanManageInvitationsChange={setCanManageInvitations}
                 />
               ) : null}
               {isProfileActive ? (
@@ -762,6 +823,50 @@ export function AdminShell({
 
 function getActiveSiteStorageKey(userId: string) {
   return `${ACTIVE_SITE_STORAGE_PREFIX}:${userId}`;
+}
+
+function ThemeSelector({
+  className = "",
+  isLabelVisible = true,
+  themeMode,
+  onThemeChange,
+}: {
+  className?: string;
+  isLabelVisible?: boolean;
+  themeMode: ThemeMode;
+  onThemeChange: (themeMode: ThemeMode) => void;
+}) {
+  return (
+    <div
+      className={[
+        "flex h-12 w-full items-center gap-4 overflow-visible rounded-md px-4",
+        className,
+      ].join(" ")}
+    >
+      <Palette
+        className="h-5 w-5 shrink-0 text-stone-700 dark:text-[#ff8a3d]"
+        aria-hidden="true"
+      />
+      <div
+        className={[
+          "min-w-0 flex-1 transition-opacity duration-150 ease-out",
+          isLabelVisible
+            ? "pointer-events-auto opacity-100"
+            : "pointer-events-none opacity-0",
+        ].join(" ")}
+      >
+        <SelectDropdown
+          ariaLabel="Choisir le theme"
+          buttonClassName="h-10"
+          menuPlacement="top"
+          options={themeOptions}
+          placeholder="Theme"
+          value={themeMode}
+          onChange={(value) => onThemeChange(value as ThemeMode)}
+        />
+      </div>
+    </div>
+  );
 }
 
 function SiteSwitcher({
@@ -954,7 +1059,7 @@ function CollapsedSidebarTooltip({
         {hasItems ? (
           <div
             className={[
-              "flex min-h-7 w-full items-center whitespace-nowrap rounded-md text-left",
+              "flex min-h-7 w-full items-center justify-center whitespace-nowrap rounded-md text-center",
               isActive ? "text-[#f44336] dark:text-[#ff8a3d]" : "",
             ].join(" ")}
           >
@@ -965,7 +1070,7 @@ function CollapsedSidebarTooltip({
             type="button"
             onClick={onClick}
             className={[
-              "flex min-h-7 w-full cursor-pointer items-center whitespace-nowrap rounded-md text-left transition-colors hover:text-[#f44336] dark:hover:text-[#ff8a3d]",
+              "flex min-h-7 w-full cursor-pointer items-center justify-center whitespace-nowrap rounded-md text-center transition-colors hover:text-[#f44336] dark:hover:text-[#ff8a3d]",
               isActive ? "text-[#f44336] dark:text-[#ff8a3d]" : "",
             ].join(" ")}
           >

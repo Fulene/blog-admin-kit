@@ -379,7 +379,7 @@ export function ArticlesAdminList({
           </span>
         </div>
 
-        <div className="flex shrink-0 flex-nowrap items-center justify-end gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-start gap-2 sm:justify-end">
           {statusFilters.map((filter) => {
             const isActive = statusFilter === filter.value;
 
@@ -389,7 +389,7 @@ export function ArticlesAdminList({
                 type="button"
                 onClick={() => setStatusFilter(filter.value)}
                 className={[
-                  "h-10 cursor-pointer rounded-md border px-4 text-sm font-medium transition-colors",
+                  "h-9 cursor-pointer rounded-md border px-3 text-xs font-medium transition-colors sm:h-10 sm:px-4 sm:text-sm",
                   isActive
                     ? "border-[#f44336] bg-red-50 text-stone-950 dark:border-[#ff8a3d] dark:bg-[#24262a] dark:text-white"
                     : "border-stone-200 bg-white text-stone-600 hover:bg-stone-100 hover:text-stone-950 dark:border-[#2d2e30] dark:bg-[#141517] dark:text-stone-300 dark:hover:bg-[#18191b] dark:hover:text-white",
@@ -599,28 +599,28 @@ function PaginationControls({
   return (
     <div
       className={[
-        "flex flex-wrap items-center gap-3 py-1 text-sm text-stone-600 dark:text-stone-300",
+        "flex flex-nowrap items-center justify-center gap-1 py-1 text-[11px] text-stone-600 dark:text-stone-300 sm:gap-2 sm:text-sm",
         className ?? "",
       ].join(" ")}
     >
-      <div className="flex h-11 items-center gap-3 rounded-full bg-stone-100 px-0.5 dark:bg-[#111213]">
+      <div className="flex h-9 items-center gap-1 rounded-full bg-stone-100 px-0.5 dark:bg-[#111213] sm:h-11 sm:gap-3">
         <button
           type="button"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={!canGoPrevious}
-          className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-100 disabled:cursor-default disabled:bg-stone-100 disabled:text-stone-300 dark:border-[#2d2e30] dark:bg-[#141517] dark:text-stone-300 dark:hover:bg-[#1c1d20] dark:disabled:bg-[#24262a] dark:disabled:text-stone-600"
+          className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border sm:h-10 sm:w-10 border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-100 disabled:cursor-default disabled:bg-stone-100 disabled:text-stone-300 dark:border-[#2d2e30] dark:bg-[#141517] dark:text-stone-300 dark:hover:bg-[#1c1d20] dark:disabled:bg-[#24262a] dark:disabled:text-stone-600"
           aria-label="Page precedente"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden="true" />
         </button>
-        <span className="w-16 text-center text-sm font-semibold tabular-nums text-stone-700 dark:text-stone-200">
+        <span className="w-11 text-center text-[11px] font-semibold tabular-nums sm:w-16 sm:text-sm text-stone-700 dark:text-stone-200">
           {currentPage} of {totalPages}
         </span>
         <button
           type="button"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={!canGoNext}
-          className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-100 disabled:cursor-default disabled:bg-stone-100 disabled:text-stone-300 dark:border-[#2d2e30] dark:bg-[#141517] dark:text-stone-300 dark:hover:bg-[#1c1d20] dark:disabled:bg-[#24262a] dark:disabled:text-stone-600"
+          className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border sm:h-10 sm:w-10 border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-100 disabled:cursor-default disabled:bg-stone-100 disabled:text-stone-300 dark:border-[#2d2e30] dark:bg-[#141517] dark:text-stone-300 dark:hover:bg-[#1c1d20] dark:disabled:bg-[#24262a] dark:disabled:text-stone-600"
           aria-label="Page suivante"
         >
           <ChevronRight className="h-4 w-4" aria-hidden="true" />
@@ -641,10 +641,10 @@ function ItemsPerPageControl({
   return (
     <SelectDropdown
       ariaLabel="Nombre d'articles par page"
-      className="w-[132px]"
+      className="w-[104px] sm:w-[132px]"
       options={ITEMS_PER_PAGE_OPTIONS.map((option) => ({
         id: String(option),
-        label: `${option} / page`,
+        label: `${option}/p`,
       }))}
       value={String(itemsPerPage)}
       onChange={(value) => onItemsPerPageChange(Number(value))}

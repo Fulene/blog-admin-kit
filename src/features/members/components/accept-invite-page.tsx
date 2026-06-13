@@ -106,8 +106,8 @@ export function AcceptInvitePage({
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center overflow-y-auto bg-[#090b0b] px-5 py-10 text-stone-50">
-      <section className="w-full max-w-lg">
+    <main className="flex h-dvh overflow-y-auto bg-[#090b0b] px-5 py-8 text-stone-50 sm:py-10">
+      <section className="mx-auto my-auto w-full max-w-lg">
         <div className="mb-5">
           <p className="text-base font-bold text-[#ff8a3d]">
             Blog Admin Kit

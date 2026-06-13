@@ -13,6 +13,7 @@ export function SelectDropdown({
   buttonClassName,
   className,
   disabled = false,
+  menuPlacement = "bottom",
   options,
   placeholder = "Selectionner",
   value,
@@ -22,6 +23,7 @@ export function SelectDropdown({
   buttonClassName?: string;
   className?: string;
   disabled?: boolean;
+  menuPlacement?: "bottom" | "top";
   options: SelectDropdownOption[];
   placeholder?: string;
   value: string;
@@ -65,7 +67,10 @@ export function SelectDropdown({
 
       {isOpen && !disabled ? (
         <div
-          className="absolute right-0 top-12 z-50 max-h-64 w-full overflow-y-auto rounded-lg border border-stone-200 bg-white p-1 shadow-xl dark:border-[#2d2e30] dark:bg-[#141517]"
+          className={[
+            "absolute right-0 z-50 max-h-64 w-full overflow-y-auto rounded-lg border border-stone-200 bg-white p-1 shadow-xl dark:border-[#2d2e30] dark:bg-[#141517]",
+            menuPlacement === "top" ? "bottom-12" : "top-12",
+          ].join(" ")}
           role="listbox"
         >
           {options.map((option) => {

@@ -304,7 +304,7 @@ export function ArticleCreateDrawer({
     : "article-create-drawer-in";
 
   return (
-    <div className="fixed inset-0 z-[9999] flex justify-end">
+    <div className="fixed inset-0 z-[9999] flex justify-end overflow-hidden">
       <ToastMessage
         message={
           errorMessage
@@ -325,7 +325,7 @@ export function ArticleCreateDrawer({
       />
 
       <aside
-        className={`${drawerAnimationClass} relative z-[1] flex h-full w-full flex-col border-l border-stone-200 bg-white shadow-2xl dark:border-[#2d2e30] dark:bg-[#141517] sm:max-w-[680px]`}
+        className={`${drawerAnimationClass} relative z-[1] flex h-full max-h-dvh w-full flex-col border-l border-stone-200 bg-white shadow-2xl dark:border-[#2d2e30] dark:bg-[#141517] sm:max-w-none lg:max-w-[50vw] xl:max-w-[860px]`}
         onAnimationEnd={handleDrawerAnimationEnd}
       >
         <header className="flex shrink-0 items-center justify-between border-b border-stone-200 px-5 py-4 dark:border-[#2d2e30]">
@@ -507,12 +507,12 @@ export function ArticleCreateDrawer({
             </div>
           </div>
 
-          <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-stone-200 px-5 py-4 dark:border-[#2d2e30]">
+          <footer className="sticky bottom-0 flex shrink-0 flex-col-reverse gap-3 border-t border-stone-200 bg-white px-5 py-4 dark:border-[#2d2e30] dark:bg-[#141517] sm:flex-row sm:items-center sm:justify-end">
             <button
               type="button"
               onClick={requestClose}
               disabled={drawerState === "loading"}
-              className="h-10 cursor-pointer rounded-md px-4 text-sm font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-950 disabled:cursor-default disabled:opacity-60 dark:text-stone-300 dark:hover:bg-[#18191b] dark:hover:text-white"
+              className="h-10 w-full cursor-pointer rounded-md px-4 text-sm font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-950 disabled:cursor-default disabled:opacity-60 dark:text-stone-300 dark:hover:bg-[#18191b] dark:hover:text-white sm:w-auto"
             >
               Annuler
             </button>
@@ -522,7 +522,7 @@ export function ArticleCreateDrawer({
               onClick={() => {
                 void handleSubmit("draft");
               }}
-              className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md bg-[#f44336] px-4 text-sm font-semibold text-white hover:bg-[#d7382d] disabled:cursor-default disabled:opacity-60 dark:bg-[#ff8a3d] dark:text-stone-950 dark:hover:bg-[#ff7920]"
+              className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-[#f44336] px-4 text-sm font-semibold text-white hover:bg-[#d7382d] disabled:cursor-default disabled:opacity-60 dark:bg-[#ff8a3d] dark:text-stone-950 dark:hover:bg-[#ff7920] sm:w-auto"
             >
               {drawerState === "loading" ? (
                 <Loader2
