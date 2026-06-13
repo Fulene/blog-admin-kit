@@ -11,6 +11,7 @@ import type { Tag } from "@/features/tags/types/tag";
 
 export function ArticleDetailsDialog({
   article,
+  canEdit,
   categoryName,
   tags,
   onPreviewImage,
@@ -18,6 +19,7 @@ export function ArticleDetailsDialog({
   onClose,
 }: {
   article: Article | null;
+  canEdit: boolean;
   categoryName: string | null;
   tags: Tag[];
   onPreviewImage: (article: Article) => void;
@@ -89,11 +91,13 @@ export function ArticleDetailsDialog({
             <p className="mt-1 truncate text-sm text-stone-500 dark:text-stone-400">
               /{mountedArticle.slug}
             </p>
-            <EditFieldButton
-              label="Modifier le titre"
-              className="absolute right-0 top-5 opacity-0 group-hover/title:opacity-100 group-focus-within/title:opacity-100"
-              onClick={() => onEditField("title")}
-            />
+            {canEdit ? (
+              <EditFieldButton
+                label="Modifier le titre"
+                className="absolute right-0 top-5 opacity-0 group-hover/title:opacity-100 group-focus-within/title:opacity-100"
+                onClick={() => onEditField("title")}
+              />
+            ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <ArticleStatusText status={mountedArticle.status} />
@@ -113,14 +117,14 @@ export function ArticleDetailsDialog({
             <div className="grid gap-5">
               <DetailBlock
                 title="Résumé"
-                onEdit={() => onEditField("summary")}
+                onEdit={canEdit ? () => onEditField("summary") : undefined}
               >
                 <p>{mountedArticle.summary}</p>
               </DetailBlock>
 
               <DetailBlock
                 title="Corps de l'article"
-                onEdit={() => onEditField("content")}
+                onEdit={canEdit ? () => onEditField("content") : undefined}
               >
                 <p className="whitespace-pre-wrap">{mountedArticle.content}</p>
               </DetailBlock>
@@ -129,11 +133,14 @@ export function ArticleDetailsDialog({
             <aside className="grid content-start gap-4">
               <DetailBlock
                 title="Catégorie"
-                onEdit={() => onEditField("category")}
+                onEdit={canEdit ? () => onEditField("category") : undefined}
               >
                 <EmptyFallback value={mountedCategoryName} />
               </DetailBlock>
-              <DetailBlock title="Tags" onEdit={() => onEditField("tags")}>
+              <DetailBlock
+                title="Tags"
+                onEdit={canEdit ? () => onEditField("tags") : undefined}
+              >
                 {mountedTags.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {mountedTags.map((tag) => (
@@ -149,7 +156,10 @@ export function ArticleDetailsDialog({
                   <EmptyFallback value={null} />
                 )}
               </DetailBlock>
-              <DetailBlock title="SEO" onEdit={() => onEditField("metaTitle")}>
+              <DetailBlock
+                title="SEO"
+                onEdit={canEdit ? () => onEditField("metaTitle") : undefined}
+              >
                 <div className="grid gap-2">
                   <MetadataLine
                     label="Meta title"
@@ -163,7 +173,9 @@ export function ArticleDetailsDialog({
               </DetailBlock>
               <DetailBlock
                 title="Image"
-                onEdit={() => onEditField("coverImageAlt")}
+                onEdit={
+                  canEdit ? () => onEditField("coverImageAlt") : undefined
+                }
               >
                 <div className="flex min-w-0 flex-nowrap items-baseline gap-2 overflow-hidden">
                   {mountedArticle.cover_image_url ? (

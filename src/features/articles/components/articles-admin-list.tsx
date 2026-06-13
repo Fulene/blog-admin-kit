@@ -81,7 +81,11 @@ const statusLabels: Record<ArticleStatus, string> = {
   published: "Publié",
 };
 
-export function ArticlesAdminList() {
+export function ArticlesAdminList({
+  canManageContent,
+}: {
+  canManageContent: boolean;
+}) {
   const { activeSiteId } = useActiveSite();
   const [articles, setArticles] = useState<Article[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -258,7 +262,7 @@ export function ArticlesAdminList() {
   }
 
   async function handleDeleteArticle() {
-    if (!articleToDelete) {
+    if (!articleToDelete || !canManageContent) {
       return;
     }
 
@@ -290,6 +294,10 @@ export function ArticlesAdminList() {
   }
 
   async function handleToggleArticleStatus(article: Article) {
+    if (!canManageContent) {
+      return;
+    }
+
     const nextStatus = article.status === "published" ? "draft" : "published";
 
     setToastMessage(null);
@@ -331,8 +339,8 @@ export function ArticlesAdminList() {
         onClose={() => setToastMessage(null)}
       />
 
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div className="flex w-full flex-col gap-3 sm:flex-row lg:max-w-sm">
+      <div className="admin-data-toolbar flex flex-col gap-3">
+        <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row">
           <div className="relative min-w-0 flex-1">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400"
@@ -348,7 +356,7 @@ export function ArticlesAdminList() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 lg:justify-center">
+        <div className="flex flex-wrap items-center gap-3 lg:justify-center xl:min-w-0">
           {shouldShowPaginationControls ? (
             <>
               <PaginationControls
@@ -371,7 +379,7 @@ export function ArticlesAdminList() {
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 xl:w-[430px] xl:justify-end">
+        <div className="flex shrink-0 flex-nowrap items-center justify-end gap-2">
           {statusFilters.map((filter) => {
             const isActive = statusFilter === filter.value;
 
@@ -391,19 +399,21 @@ export function ArticlesAdminList() {
               </button>
             );
           })}
-          <button
-            type="button"
-            onClick={() => setIsCreateDrawerOpen(true)}
-            className="group inline-flex h-11 w-11 shrink-0 cursor-pointer items-center overflow-hidden rounded-full bg-[#f44336] text-sm font-semibold text-white transition-[width,background-color] duration-200 ease-out hover:w-39 hover:bg-[#d7382d] focus-visible:w-39 focus-visible:bg-[#d7382d] dark:bg-[#ff8a3d] dark:text-stone-950 dark:hover:bg-[#ff7920] dark:focus-visible:bg-[#ff7920]"
-            aria-label="Nouvel article"
-          >
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center">
-              <Plus className="h-4 w-4" aria-hidden="true" />
-            </span>
-            <span className="-ml-1 w-0 overflow-hidden whitespace-nowrap opacity-0 transition-[width,opacity] duration-200 ease-out group-hover:w-25 group-hover:opacity-100 group-focus-visible:w-25 group-focus-visible:opacity-100">
-              Nouvel article
-            </span>
-          </button>
+          {canManageContent ? (
+            <button
+              type="button"
+              onClick={() => setIsCreateDrawerOpen(true)}
+              className="admin-data-toolbar-action group inline-flex h-11 w-11 shrink-0 cursor-pointer items-center overflow-hidden rounded-full bg-[#f44336] text-sm font-semibold text-white transition-[width,background-color] duration-200 ease-out hover:w-[156px] hover:bg-[#d7382d] focus-visible:w-[156px] focus-visible:bg-[#d7382d] dark:bg-[#ff8a3d] dark:text-stone-950 dark:hover:bg-[#ff7920] dark:focus-visible:bg-[#ff7920]"
+              aria-label="Nouvel article"
+            >
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center">
+                <Plus className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <span className="-ml-1 w-0 overflow-hidden whitespace-nowrap opacity-0 transition-[width,opacity] duration-200 ease-out group-hover:w-[104px] group-hover:opacity-100 group-focus-visible:w-[104px] group-focus-visible:opacity-100">
+                Nouvel article
+              </span>
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -430,6 +440,7 @@ export function ArticlesAdminList() {
           <ArticlesTable
             articles={paginatedArticles}
             articleTagsById={articleTagsById}
+            canManageContent={canManageContent}
             categoryNameById={categoryNameById}
             sortState={sortState}
             onDeleteArticle={setArticleToDelete}
@@ -466,17 +477,20 @@ export function ArticlesAdminList() {
         </>
       ) : null}
 
-      <ArticleCreateDrawer
-        isOpen={isCreateDrawerOpen}
-        onArticleCreated={(message) => {
-          setReloadKey((key) => key + 1);
-          setToastMessage(message);
-        }}
-        onClose={() => setIsCreateDrawerOpen(false)}
-      />
+      {canManageContent ? (
+        <ArticleCreateDrawer
+          isOpen={isCreateDrawerOpen}
+          onArticleCreated={(message) => {
+            setReloadKey((key) => key + 1);
+            setToastMessage(message);
+          }}
+          onClose={() => setIsCreateDrawerOpen(false)}
+        />
+      ) : null}
 
       <ArticleDetailsDialog
         article={viewedArticle}
+        canEdit={canManageContent}
         categoryName={
           viewedArticle?.category_id
             ? categoryNameById.get(viewedArticle.category_id) ?? null
@@ -491,7 +505,7 @@ export function ArticlesAdminList() {
           setViewedArticle(null);
         }}
         onEditField={(field) => {
-          if (!viewedArticle) {
+          if (!viewedArticle || !canManageContent) {
             return;
           }
 
@@ -502,22 +516,24 @@ export function ArticlesAdminList() {
         onClose={() => setViewedArticle(null)}
       />
 
-      <ArticleEditDrawer
-        article={editedArticle}
-        articleTags={
-          editedArticle ? (articleTagsById.get(editedArticle.id) ?? []) : []
-        }
-        focusTarget={editFocusTarget}
-        isOpen={Boolean(editedArticle)}
-        onArticleUpdated={(message) => {
-          setReloadKey((key) => key + 1);
-          setToastMessage(message);
-        }}
-        onClose={() => {
-          setEditedArticle(null);
-          setEditFocusTarget(null);
-        }}
-      />
+      {canManageContent ? (
+        <ArticleEditDrawer
+          article={editedArticle}
+          articleTags={
+            editedArticle ? (articleTagsById.get(editedArticle.id) ?? []) : []
+          }
+          focusTarget={editFocusTarget}
+          isOpen={Boolean(editedArticle)}
+          onArticleUpdated={(message) => {
+            setReloadKey((key) => key + 1);
+            setToastMessage(message);
+          }}
+          onClose={() => {
+            setEditedArticle(null);
+            setEditFocusTarget(null);
+          }}
+        />
+      ) : null}
 
       <ArticleImageDialog
         article={imagePreviewArticle}
@@ -536,27 +552,29 @@ export function ArticlesAdminList() {
         }}
       />
 
-      <ConfirmDialog
-        cancelLabel="Annuler"
-        confirmLabel={isDeletingArticle ? "Suppression..." : "Supprimer"}
-        isDanger
-        isOpen={Boolean(articleToDelete)}
-        title="Supprimer cet article ?"
-        onCancel={() => {
-          if (!isDeletingArticle) {
-            setArticleToDelete(null);
-          }
-        }}
-        onConfirm={() => {
-          if (!isDeletingArticle) {
-            void handleDeleteArticle();
-          }
-        }}
-      >
-        Cette action supprimera l'article
-        {articleToDelete ? ` "${articleToDelete.title}"` : ""} et ses tags
-        associés.
-      </ConfirmDialog>
+      {canManageContent ? (
+        <ConfirmDialog
+          cancelLabel="Annuler"
+          confirmLabel={isDeletingArticle ? "Suppression..." : "Supprimer"}
+          isDanger
+          isOpen={Boolean(articleToDelete)}
+          title="Supprimer cet article ?"
+          onCancel={() => {
+            if (!isDeletingArticle) {
+              setArticleToDelete(null);
+            }
+          }}
+          onConfirm={() => {
+            if (!isDeletingArticle) {
+              void handleDeleteArticle();
+            }
+          }}
+        >
+          Cette action supprimera l'article
+          {articleToDelete ? ` "${articleToDelete.title}"` : ""} et ses tags
+          associés.
+        </ConfirmDialog>
+      ) : null}
     </section>
   );
 }
@@ -637,6 +655,7 @@ function ItemsPerPageControl({
 function ArticlesTable({
   articles,
   articleTagsById,
+  canManageContent,
   categoryNameById,
   sortState,
   onDeleteArticle,
@@ -648,6 +667,7 @@ function ArticlesTable({
 }: {
   articles: Article[];
   articleTagsById: Map<string, Tag[]>;
+  canManageContent: boolean;
   categoryNameById: Map<string, string>;
   sortState: SortState;
   onDeleteArticle: (article: Article) => void;
@@ -725,7 +745,9 @@ function ArticlesTable({
               sortState={sortState}
               onSort={onSort}
             />
-            <th className="w-[10%] px-4 py-3 text-right">Actions</th>
+            {canManageContent ? (
+              <th className="w-[10%] px-4 py-3 text-right">Actions</th>
+            ) : null}
           </tr>
         </thead>
         <tbody className="divide-y divide-stone-200 dark:divide-[#2d2e30]">
@@ -786,25 +808,27 @@ function ArticlesTable({
                   />
                 </td>
                 <td className="px-4 py-4">{formatDate(article.updated_at)}</td>
-                <td className="px-4 py-4">
-                  <div className="flex justify-end gap-2">
-                    <StatusToggleButton
-                      article={article}
-                      onToggleArticleStatus={onToggleArticleStatus}
-                    />
-                    <ArticleActionButton
-                      label="Modifier"
-                      icon={Pencil}
-                      onClick={() => onEditArticle(article)}
-                    />
-                    <ArticleActionButton
-                      label="Supprimer"
-                      icon={Trash2}
-                      isDanger
-                      onClick={() => onDeleteArticle(article)}
-                    />
-                  </div>
-                </td>
+                {canManageContent ? (
+                  <td className="px-4 py-4">
+                    <div className="flex justify-end gap-2">
+                      <StatusToggleButton
+                        article={article}
+                        onToggleArticleStatus={onToggleArticleStatus}
+                      />
+                      <ArticleActionButton
+                        label="Modifier"
+                        icon={Pencil}
+                        onClick={() => onEditArticle(article)}
+                      />
+                      <ArticleActionButton
+                        label="Supprimer"
+                        icon={Trash2}
+                        isDanger
+                        onClick={() => onDeleteArticle(article)}
+                      />
+                    </div>
+                  </td>
+                ) : null}
               </tr>
             );
           })}

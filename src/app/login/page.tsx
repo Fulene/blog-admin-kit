@@ -16,7 +16,7 @@ export default async function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center overflow-y-auto bg-stone-50 px-5 py-10 text-stone-950 dark:bg-[#090b0b] dark:text-stone-50">
+    <main className="dark flex min-h-screen items-center justify-center overflow-y-auto bg-stone-50 px-5 py-10 text-stone-950 dark:bg-[#090b0b] dark:text-stone-50">
       <section className="w-full max-w-sm">
         <div className="mb-8">
           <p className="text-base font-bold text-[#f44336] dark:text-[#ff8a3d]">

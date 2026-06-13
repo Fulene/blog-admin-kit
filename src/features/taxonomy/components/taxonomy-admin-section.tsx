@@ -40,7 +40,13 @@ type SortDirection = "asc" | "desc";
 
 const ITEMS_PER_PAGE_OPTIONS = [5, 10, 20, 50] as const;
 
-export function TaxonomyAdminSection({ mode }: { mode: TaxonomyMode }) {
+export function TaxonomyAdminSection({
+  canManageContent,
+  mode,
+}: {
+  canManageContent: boolean;
+  mode: TaxonomyMode;
+}) {
   const { activeSiteId } = useActiveSite();
   const [items, setItems] = useState<Item[]>([]);
   const [loadState, setLoadState] = useState<"loading" | "success" | "error">(
@@ -106,6 +112,13 @@ export function TaxonomyAdminSection({ mode }: { mode: TaxonomyMode }) {
     setCurrentPage((page) => Math.min(page, totalPages));
   }, [totalPages]);
 
+  useEffect(() => {
+    if (!canManageContent) {
+      resetForm();
+      setPendingDelete(null);
+    }
+  }, [canManageContent]);
+
   async function loadItems() {
     setLoadState("loading");
     setMessage(null);
@@ -130,6 +143,10 @@ export function TaxonomyAdminSection({ mode }: { mode: TaxonomyMode }) {
   }
 
   async function handleSave() {
+    if (!canManageContent) {
+      return;
+    }
+
     const trimmedName = name.trim();
     const normalizedName = isCategories ? trimmedName : trimmedName.toLowerCase();
     const slug = slugify(normalizedName);
@@ -199,6 +216,10 @@ export function TaxonomyAdminSection({ mode }: { mode: TaxonomyMode }) {
   }
 
   async function requestDelete(item: Item) {
+    if (!canManageContent) {
+      return;
+    }
+
     if (!isCategories) {
       setPendingDelete({ item, articleTitles: [] });
       return;
@@ -225,7 +246,7 @@ export function TaxonomyAdminSection({ mode }: { mode: TaxonomyMode }) {
   }
 
   async function confirmDelete() {
-    if (!pendingDelete) {
+    if (!pendingDelete || !canManageContent) {
       return;
     }
 
@@ -260,6 +281,10 @@ export function TaxonomyAdminSection({ mode }: { mode: TaxonomyMode }) {
   }
 
   function openCreateForm() {
+    if (!canManageContent) {
+      return;
+    }
+
     setEditingItem(null);
     setName("");
     setIsFormOpen(true);
@@ -267,6 +292,10 @@ export function TaxonomyAdminSection({ mode }: { mode: TaxonomyMode }) {
   }
 
   function openEditForm(item: Item) {
+    if (!canManageContent) {
+      return;
+    }
+
     setEditingItem(item);
     setName(item.name);
     setIsFormOpen(true);
@@ -292,8 +321,8 @@ export function TaxonomyAdminSection({ mode }: { mode: TaxonomyMode }) {
         </h1>
       </div>
 
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div className="relative min-w-0 lg:max-w-sm lg:flex-1">
+      <div className="admin-data-toolbar flex flex-col gap-3">
+        <div className="relative min-w-0">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400"
             aria-hidden="true"
@@ -311,7 +340,7 @@ export function TaxonomyAdminSection({ mode }: { mode: TaxonomyMode }) {
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 lg:justify-center">
+        <div className="flex flex-wrap items-center gap-3 lg:justify-center xl:min-w-0">
           {shouldShowPaginationControls ? (
             <>
               <PaginationControls
@@ -331,7 +360,7 @@ export function TaxonomyAdminSection({ mode }: { mode: TaxonomyMode }) {
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 xl:w-[276px] xl:justify-end">
+        <div className="flex shrink-0 flex-nowrap items-center justify-end gap-2">
           {(["asc", "desc"] as const).map((direction) => {
             const isActive = sortDirection === direction;
 
@@ -351,23 +380,25 @@ export function TaxonomyAdminSection({ mode }: { mode: TaxonomyMode }) {
               </button>
             );
           })}
-          <button
-            type="button"
-            onClick={openCreateForm}
-            className="group inline-flex h-11 w-11 shrink-0 cursor-pointer items-center overflow-hidden rounded-full bg-[#f44336] text-sm font-semibold text-white transition-[width,background-color] duration-200 ease-out hover:w-33 hover:bg-[#d7382d] focus-visible:w-33 focus-visible:bg-[#d7382d] dark:bg-[#ff8a3d] dark:text-stone-950 dark:hover:bg-[#ff7920] dark:focus-visible:bg-[#ff7920]"
-            aria-label={isCategories ? "Nouvelle categorie" : "Nouveau tag"}
-          >
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center">
-              <Plus className="h-4 w-4" aria-hidden="true" />
-            </span>
-            <span className="-ml-1 w-0 overflow-hidden whitespace-nowrap opacity-0 transition-[width,opacity] duration-200 ease-out group-hover:w-19 group-hover:opacity-100 group-focus-visible:w-19 group-focus-visible:opacity-100">
-              Ajouter
-            </span>
-          </button>
+          {canManageContent ? (
+            <button
+              type="button"
+              onClick={openCreateForm}
+              className="admin-data-toolbar-action group inline-flex h-11 w-11 shrink-0 cursor-pointer items-center overflow-hidden rounded-full bg-[#f44336] text-sm font-semibold text-white transition-[width,background-color] duration-200 ease-out hover:w-[132px] hover:bg-[#d7382d] focus-visible:w-[132px] focus-visible:bg-[#d7382d] dark:bg-[#ff8a3d] dark:text-stone-950 dark:hover:bg-[#ff7920] dark:focus-visible:bg-[#ff7920]"
+              aria-label={isCategories ? "Nouvelle categorie" : "Nouveau tag"}
+            >
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center">
+                <Plus className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <span className="-ml-1 w-0 overflow-hidden whitespace-nowrap opacity-0 transition-[width,opacity] duration-200 ease-out group-hover:w-[80px] group-hover:opacity-100 group-focus-visible:w-[80px] group-focus-visible:opacity-100">
+                Ajouter
+              </span>
+            </button>
+          ) : null}
         </div>
       </div>
 
-      {isFormOpen ? (
+      {canManageContent && isFormOpen ? (
         <div className="rounded-lg border border-stone-200 bg-white p-4 dark:border-[#2d2e30] dark:bg-[#141517]">
           <div className="flex flex-col gap-3 sm:flex-row">
             <input
@@ -447,24 +478,26 @@ export function TaxonomyAdminSection({ mode }: { mode: TaxonomyMode }) {
                     {item.name}
                   </p>
                 </div>
-                <div className="flex shrink-0 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => openEditForm(item)}
-                    className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-stone-200 bg-white text-stone-600 hover:bg-stone-100 hover:text-stone-950 dark:border-[#2d2e30] dark:bg-[#111213] dark:text-stone-300 dark:hover:bg-[#18191b] dark:hover:text-white"
-                    aria-label={`Modifier ${item.name}`}
-                  >
-                    <Pencil className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void requestDelete(item)}
-                    className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-red-200 bg-red-50 text-[#f44336] hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
-                    aria-label={`Supprimer ${item.name}`}
-                  >
-                    <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                </div>
+                {canManageContent ? (
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openEditForm(item)}
+                      className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-stone-200 bg-white text-stone-600 hover:bg-stone-100 hover:text-stone-950 dark:border-[#2d2e30] dark:bg-[#111213] dark:text-stone-300 dark:hover:bg-[#18191b] dark:hover:text-white"
+                      aria-label={`Modifier ${item.name}`}
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void requestDelete(item)}
+                      className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-red-200 bg-red-50 text-[#f44336] hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
+                      aria-label={`Supprimer ${item.name}`}
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>
@@ -482,31 +515,33 @@ export function TaxonomyAdminSection({ mode }: { mode: TaxonomyMode }) {
         />
       ) : null}
 
-      <ConfirmDialog
-        cancelLabel="Annuler"
-        confirmLabel="Supprimer"
-        isDanger
-        isOpen={Boolean(pendingDelete)}
-        title={`Supprimer ${pendingDelete?.item.name ?? ""} ?`}
-        onCancel={() => setPendingDelete(null)}
-        onConfirm={() => void confirmDelete()}
-      >
-        {pendingDelete?.articleTitles.length ? (
-          <>
-            <p>
-              Cette categorie est utilisee par les articles suivants. Ils seront
-              conserves mais leur categorie sera retiree :
-            </p>
-            <ul className="mt-3 max-h-40 list-disc overflow-y-auto pl-5">
-              {pendingDelete.articleTitles.map((title) => (
-                <li key={title}>{title}</li>
-              ))}
-            </ul>
-          </>
-        ) : (
-          <p>Cette action est definitive.</p>
-        )}
-      </ConfirmDialog>
+      {canManageContent ? (
+        <ConfirmDialog
+          cancelLabel="Annuler"
+          confirmLabel="Supprimer"
+          isDanger
+          isOpen={Boolean(pendingDelete)}
+          title={`Supprimer ${pendingDelete?.item.name ?? ""} ?`}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => void confirmDelete()}
+        >
+          {pendingDelete?.articleTitles.length ? (
+            <>
+              <p>
+                Cette categorie est utilisee par les articles suivants. Ils seront
+                conserves mais leur categorie sera retiree :
+              </p>
+              <ul className="mt-3 max-h-40 list-disc overflow-y-auto pl-5">
+                {pendingDelete.articleTitles.map((title) => (
+                  <li key={title}>{title}</li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <p>Cette action est definitive.</p>
+          )}
+        </ConfirmDialog>
+      ) : null}
     </section>
   );
 }

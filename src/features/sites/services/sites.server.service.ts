@@ -5,11 +5,12 @@ import { parseSiteMemberRows } from "@/features/sites/services/sites.service";
 import type { Site } from "@/features/sites/types/site";
 import { createClient } from "@/lib/supabase/server";
 
-const SITE_MEMBER_SELECT = "site_id, sites(id,name,slug)";
+const SITE_MEMBER_SELECT = "site_id, roles(id,code,label), sites(id,name,slug)";
 
 type SiteMemberRow = {
+  roles: Site["currentUserRole"] | Site["currentUserRole"][];
   site_id: string;
-  sites: Site | Site[] | null;
+  sites: Omit<Site, "currentUserRole"> | Omit<Site, "currentUserRole">[] | null;
 };
 
 export async function getAccessibleSitesForCurrentUser(): Promise<Site[]> {

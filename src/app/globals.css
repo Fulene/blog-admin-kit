@@ -303,6 +303,20 @@
     animation: profile-toast-float 2200ms ease-in-out 320ms infinite;
   }
 
+  @media (min-width: 1280px) {
+    .admin-data-toolbar {
+      display: grid;
+      grid-template-columns: minmax(120px, 320px) minmax(max-content, 1fr) max-content;
+      align-items: center;
+      transition: grid-template-columns 200ms ease-out;
+    }
+
+    .admin-data-toolbar:has(.admin-data-toolbar-action:hover),
+    .admin-data-toolbar:has(.admin-data-toolbar-action:focus-visible) {
+      grid-template-columns: minmax(80px, 180px) minmax(max-content, 1fr) max-content;
+    }
+  }
+
   @media (max-width: 767px) {
     .profile-toast-in {
       animation-name: profile-toast-mobile-in;

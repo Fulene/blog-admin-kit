@@ -8,6 +8,7 @@ import {
   FileText,
   FolderTree,
   LogOut,
+  Mail,
   Menu,
   Moon,
   PanelLeftClose,
@@ -27,6 +28,7 @@ import { MembersAdminSection } from "@/features/members/components/members-admin
 import { ProfileAdminSection } from "@/features/profile/components/profile-admin-section";
 import type { ProfileView } from "@/features/profile/types/profile";
 import { ActiveSiteProvider } from "@/features/sites/components/active-site-provider";
+import { getCurrentSitePermissionsAction } from "@/features/sites/actions/site-permissions.actions";
 import type { Site } from "@/features/sites/types/site";
 import { TaxonomyAdminSection } from "@/features/taxonomy/components/taxonomy-admin-section";
 
@@ -34,7 +36,8 @@ type AdminSectionId =
   | "articles"
   | "categories"
   | "tags"
-  | "members"
+  | "members-list"
+  | "members-invitations"
   | "profile-edit"
   | "profile-security";
 type ThemeMode = "light" | "dark";
@@ -45,6 +48,27 @@ const profileSectionIds: AdminSectionId[] = [
   "profile-edit",
   "profile-security",
 ];
+const memberSectionIds: AdminSectionId[] = [
+  "members-list",
+  "members-invitations",
+];
+
+const memberSubsections = [
+  {
+    id: "members-list",
+    label: "Membres",
+    icon: UserRound,
+  },
+  {
+    id: "members-invitations",
+    label: "Invitations",
+    icon: Mail,
+  },
+] satisfies Array<{
+  id: AdminSectionId;
+  label: string;
+  icon: typeof FileText;
+}>;
 
 const profileSubsections = [
   {
@@ -82,6 +106,7 @@ export function AdminShell({
   const [activeSite, setActiveSite] = useState<Site | null>(null);
   const [isSiteReady, setIsSiteReady] = useState(false);
   const [hasHeaderAvatarError, setHasHeaderAvatarError] = useState(false);
+  const [isMembersMenuOpen, setIsMembersMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [areSidebarLabelsVisible, setAreSidebarLabelsVisible] = useState(true);
@@ -89,6 +114,14 @@ export function AdminShell({
   const [isMounted, setIsMounted] = useState(false);
 
   const isProfileActive = profileSectionIds.includes(activeSectionId);
+  const isMembersActive = memberSectionIds.includes(activeSectionId);
+  const [canManageInvitations, setCanManageInvitations] = useState(
+    false,
+  );
+  const [canManageContent, setCanManageContent] = useState(false);
+  const visibleMemberSubsections = canManageInvitations
+    ? memberSubsections
+    : memberSubsections.filter((section) => section.id !== "members-invitations");
   const userLabel =
     profile?.first_name?.trim() || userEmail.split("@")[0] || "Admin";
   const headerInitials = getUserInitials(
@@ -96,6 +129,53 @@ export function AdminShell({
       userEmail,
   );
   const activeSiteStorageKey = getActiveSiteStorageKey(userId);
+
+  useEffect(() => {
+    if (isMembersActive) {
+      setIsMembersMenuOpen(true);
+    }
+  }, [isMembersActive]);
+
+  useEffect(() => {
+    if (
+      activeSite &&
+      activeSectionId === "members-invitations" &&
+      !canManageInvitations
+    ) {
+      setActiveSectionId("members-list");
+    }
+  }, [activeSectionId, activeSite, canManageInvitations]);
+
+  useEffect(() => {
+    if (!activeSite?.id) {
+      setCanManageInvitations(false);
+      setCanManageContent(false);
+      return;
+    }
+
+    let isCurrentSite = true;
+
+    setCanManageInvitations(false);
+    setCanManageContent(false);
+
+    void getCurrentSitePermissionsAction({ siteId: activeSite.id })
+      .then((permissions) => {
+        if (isCurrentSite) {
+          setCanManageInvitations(permissions.canManageUsers);
+          setCanManageContent(permissions.canManageContent);
+        }
+      })
+      .catch(() => {
+        if (isCurrentSite) {
+          setCanManageInvitations(false);
+          setCanManageContent(false);
+        }
+      });
+
+    return () => {
+      isCurrentSite = false;
+    };
+  }, [activeSite?.id]);
 
   useEffect(() => {
     if (isProfileActive) {
@@ -132,6 +212,8 @@ export function AdminShell({
     if (initialSites.length === 1) {
       const [site] = initialSites;
       setActiveSite(site);
+      setCanManageInvitations(false);
+      setCanManageContent(false);
       window.localStorage.setItem(activeSiteStorageKey, site.id);
       setIsSiteReady(true);
       return;
@@ -147,6 +229,8 @@ export function AdminShell({
     }
 
     setActiveSite(storedSite);
+    setCanManageInvitations(false);
+    setCanManageContent(false);
     setIsSiteReady(true);
   }, [activeSiteStorageKey, initialSites, router]);
 
@@ -159,6 +243,8 @@ export function AdminShell({
 
     window.localStorage.setItem(activeSiteStorageKey, nextSite.id);
     setActiveSite(nextSite);
+    setCanManageInvitations(false);
+    setCanManageContent(false);
     setActiveSectionId("articles");
   }
 
@@ -230,13 +316,36 @@ export function AdminShell({
 
           <SidebarButton
             icon={Users}
-            isActive={activeSectionId === "members"}
+            isActive={isMembersActive}
+            isDropdownOpen={isMembersMenuOpen}
             label="Utilisateurs"
             onClick={() => {
-              setActiveSectionId("members");
-              setIsMobileMenuOpen(false);
+              setIsMembersMenuOpen((value) => !value);
             }}
           />
+
+          <div
+            className={[
+              "ml-7 mt-2 grid border-l border-stone-200 pl-3 transition-[grid-template-rows] duration-200 dark:border-[#2d2e30]",
+              isMembersMenuOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+            ].join(" ")}
+          >
+            <div className="flex min-h-0 flex-col gap-1 overflow-hidden">
+              {visibleMemberSubsections.map((section) => (
+                <SidebarButton
+                  key={section.id}
+                  icon={section.icon}
+                  isCompact
+                  isActive={activeSectionId === section.id}
+                  label={section.label}
+                  onClick={() => {
+                    setActiveSectionId(section.id);
+                    setIsMobileMenuOpen(false);
+                  }}
+                />
+              ))}
+            </div>
+          </div>
 
           <SidebarButton
             icon={Settings}
@@ -473,12 +582,37 @@ export function AdminShell({
 
               <SidebarButton
                 icon={Users}
-                isActive={activeSectionId === "members"}
+                isActive={isMembersActive}
                 isCollapsed={isSidebarCollapsed}
+                collapsedItems={visibleMemberSubsections.map((section) => ({
+                  icon: section.icon,
+                  isActive: activeSectionId === section.id,
+                  label: section.label,
+                  onClick: () => setActiveSectionId(section.id),
+                }))}
+                isDropdownOpen={isMembersMenuOpen}
                 isLabelVisible={areSidebarLabelsVisible}
                 label="Utilisateurs"
-                onClick={() => setActiveSectionId("members")}
+                onClick={() => {
+                  setIsMembersMenuOpen((value) => !value);
+                }}
               />
+
+              {!isSidebarCollapsed && isMembersMenuOpen ? (
+                <div className="ml-7 mt-2 flex flex-col gap-1 overflow-hidden border-l border-stone-200 pl-3 dark:border-[#2d2e30]">
+                  {visibleMemberSubsections.map((section) => (
+                    <SidebarButton
+                      key={section.id}
+                      icon={section.icon}
+                      isCompact
+                      isActive={activeSectionId === section.id}
+                      isLabelVisible={areSidebarLabelsVisible}
+                      label={section.label}
+                      onClick={() => setActiveSectionId(section.id)}
+                    />
+                  ))}
+                </div>
+              ) : null}
 
               <SidebarButton
                 icon={Settings}
@@ -576,15 +710,32 @@ export function AdminShell({
         <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-white dark:bg-[#141517]">
           <div className="flex min-h-0 flex-1 overflow-y-auto border-l border-t border-stone-200 bg-white px-6 py-6 [scrollbar-gutter:stable] dark:border-[#2d2e30] dark:bg-[#090b0b] sm:px-10 lg:rounded-tl-[5px]">
             <div className="min-h-full w-full">
-              {activeSectionId === "articles" ? <ArticlesAdminList /> : null}
+              {activeSectionId === "articles" ? (
+                <ArticlesAdminList canManageContent={canManageContent} />
+              ) : null}
               {activeSectionId === "categories" ? (
-                <TaxonomyAdminSection mode="categories" />
+                <TaxonomyAdminSection
+                  canManageContent={canManageContent}
+                  mode="categories"
+                />
               ) : null}
               {activeSectionId === "tags" ? (
-                <TaxonomyAdminSection mode="tags" />
+                <TaxonomyAdminSection
+                  canManageContent={canManageContent}
+                  mode="tags"
+                />
               ) : null}
-              {activeSectionId === "members" ? (
-                <MembersAdminSection currentUserId={userId} />
+              {isMembersActive ? (
+                <MembersAdminSection
+                  canManageInvitations={canManageInvitations}
+                  currentUserId={userId}
+                  mode={
+                    activeSectionId === "members-invitations"
+                      ? "invitations"
+                      : "members"
+                  }
+                  onCanManageInvitationsChange={setCanManageInvitations}
+                />
               ) : null}
               {isProfileActive ? (
                 <ProfileAdminSection

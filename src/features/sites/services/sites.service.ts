@@ -2,11 +2,12 @@ import { ZodError } from "zod";
 import { siteListSchema } from "@/features/sites/schemas/site.schema";
 import type { Site } from "@/features/sites/types/site";
 
-const SITE_MEMBER_SELECT = "site_id, sites(id,name,slug)";
+const SITE_MEMBER_SELECT = "site_id, roles(id,code,label), sites(id,name,slug)";
 
 type SiteMemberRow = {
+  roles: Site["currentUserRole"] | Site["currentUserRole"][];
   site_id: string;
-  sites: Site | Site[] | null;
+  sites: Omit<Site, "currentUserRole"> | Omit<Site, "currentUserRole">[] | null;
 };
 
 export async function getAccessibleSites(): Promise<Site[]> {
@@ -38,11 +39,17 @@ export async function getAccessibleSites(): Promise<Site[]> {
 
 export function parseSiteMemberRows(rows: SiteMemberRow[]): Site[] {
   const sites = rows.flatMap((row) => {
-    if (Array.isArray(row.sites)) {
-      return row.sites;
-    }
+    const role = Array.isArray(row.roles) ? (row.roles[0] ?? null) : row.roles;
+    const rowSites = Array.isArray(row.sites)
+      ? row.sites
+      : row.sites
+        ? [row.sites]
+        : [];
 
-    return row.sites ? [row.sites] : [];
+    return rowSites.map((site) => ({
+      ...site,
+      currentUserRole: role,
+    }));
   });
 
   const uniqueSites = Array.from(
